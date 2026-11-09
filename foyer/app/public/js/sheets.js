@@ -500,6 +500,12 @@
     }
     sheet.onRefresh(function (c) { if (c[id]) r(); });
     r();
+    // What this speaker can play (radios, playlists…), in Foyer's Music app.
+    var lib = F.el('div', 'btn-row', sheet.body);
+    F.button(lib, F.lang === 'en' ? 'Browse' : 'Parcourir', 'playlist-play', '', function () {
+      sheet.close();
+      F.apps.openInside('music', id);
+    });
     var others = F.entitiesOf('media_player');
     if (others.length > 1) {
       var sec = sheet.section(F.t('pick_speaker'));
@@ -686,6 +692,13 @@
       F.el('div', 'sheet-empty', sheet.body, F.t('no_calendar'));
       return;
     }
+    // + : a new event, in iCloud through Home Assistant (so it reaches the iPhone too).
+    var plus = F.el('div', 'sheet-plus', sheet.panel);
+    F.icon('plus', '', plus);
+    F.onTap(plus, function () {
+      sheet.close();
+      F.newEvent();
+    });
     var now = new Date();
     var any = false;
     for (var d = 0; d < 7; d++) {

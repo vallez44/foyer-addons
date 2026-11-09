@@ -13,6 +13,10 @@ const F = {
   bool: (v) => (typeof v === 'boolean' ? v : undefined),
   code: (v) => (typeof v === 'string' && /^[0-9A-Za-z]{1,16}$/.test(v) ? v : undefined),
   rgb: (v) => (Array.isArray(v) && v.length === 3 && v.every((x) => Number.isInteger(x) && x >= 0 && x <= 255) ? v : undefined),
+  str: (max) => (v) => (typeof v === 'string' && v.trim() && v.length <= max ? v : undefined),
+  oneOf: (list) => (v) => (list.includes(v) ? v : undefined),
+  when: (v) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/.test(v) ? v : undefined),
+  day: (v) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined),
   hvac: (v, st) => {
     const modes = (st && st.attributes && st.attributes.hvac_modes) || [];
     return typeof v === 'string' && modes.includes(v) ? v : undefined;
@@ -35,6 +39,19 @@ const SERVICES = {
   media_player: {
     media_play_pause: {}, media_play: {}, media_pause: {}, media_stop: {}, media_next_track: {}, media_previous_track: {},
     volume_set: { volume_level: F.unit }, volume_mute: { is_volume_muted: F.bool }, turn_on: {}, turn_off: {},
+    play_media: { media_content_id: F.str(2000), media_content_type: F.str(100), enqueue: F.oneOf(['play', 'next', 'add', 'replace']) },
+  },
+  // Apple Calendar (iCloud through CalDAV) and lists: what you add shows up on the iPhone.
+  calendar: {
+    create_event: {
+      summary: F.str(200), start_date_time: F.when, end_date_time: F.when, start_date: F.day, end_date: F.day,
+      description: F.str(1000), location: F.str(200),
+    },
+  },
+  todo: {
+    add_item: { item: F.str(200) },
+    update_item: { item: F.str(200), status: F.oneOf(['needs_action', 'completed']), rename: F.str(200) },
+    remove_item: { item: F.str(200) },
   },
   scene: { turn_on: {} },
   script: { turn_on: {} },

@@ -1,8 +1,10 @@
-/* Foyer: arranging tiles on the screen itself. Hold a tile, then drag it, resize it (S W M L),
-   remove it (−), add one (+) or change what it shows (⇄). OK saves for every screen. ES5. */
+/* Foyer: arranging tiles on the screen itself. Hold a tile, drag it: a frame shows the cell where it lands
+   and the other tiles make room; let go and it stays exactly there. Tap a tile for its size (S W M L) or to
+   change what it shows (⇄); − removes, + adds. Tiles keep their cell (per orientation). OK saves. ES5. */
 (function (w) {
   'use strict';
   var F = w.F;
+  var L = w.FOYER_LAYOUT;
   var E = F.edit = { active: false, face: null, items: [], selected: null, dragging: null, dirty: false };
   var GRID_FACES = { home_plus: 1, home: 1 };
   var SIZES = ['S', 'W', 'M', 'L'];
@@ -16,8 +18,156 @@
 
   function copy(o) { return JSON.parse(JSON.stringify(o)); }
 
+  // ------------------------------------------------------------------ cells
+  function cellRect(it) {
+    var b = it.box;
+    return b ? { x: b.col, y: b.row, w: b.cs, h: b.rs } : null;
+  }
+  function hits(a, b) { return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h; }
+  function inGrid(r) {
+    var g = E.geo;
+    return r.x >= 0 && r.y >= 0 && r.x + r.w <= g.cols && r.y + r.h <= g.rows;
+  }
+  function spanOf(size) {
+    var s = L.SIZES[size] || L.SIZES.S;
+    return [Math.min(s[0], E.geo.cols), Math.min(s[1], E.geo.rows)];
+  }
+  function pixelRect(r) {
+    var g = E.geo;
+    return {
+      x: g.pad + r.x * (g.cw + g.gap), y: g.top + g.pad + r.y * (g.ch + g.gap),
+      w: r.w * g.cw + (r.w - 1) * g.gap, h: r.h * g.ch + (r.h - 1) * g.gap
+    };
+  }
+
+  /** The free spot closest to (ox, oy), or null. */
+  function nearestFit(grid, cols, rows, w, h, ox, oy) {
+    var best = null;
+    var bestD = 1e9;
+    for (var y = 0; y <= rows - h; y++) {
+      for (var x = 0; x <= cols - w; x++) {
+        if (!L.fits(grid, x, y, w, h)) continue;
+        var d = Math.abs(x - ox) + Math.abs(y - oy);
+        if (d < bestD) {
+          bestD = d;
+          best = [x, y];
+        }
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Re-places the tiles in `which` (indexes) in free cells, the moving tile being fixed on `to`:
+   * near = each one on the free spot closest to where it was; otherwise row by row from the top.
+   */
+  function relocate(base, mi, to, which, near, bigFirst) {
+    var g = E.geo;
+    var grid = L.emptyGrid(g.cols, g.rows);
+    var res = base.slice();
+    res[mi] = to;
+    L.mark(grid, to.x, to.y, to.w, to.h);
+    for (var i = 0; i < base.length; i++) {
+      if (i === mi || !base[i] || which.indexOf(i) >= 0) continue;
+      L.mark(grid, base[i].x, base[i].y, base[i].w, base[i].h);
+    }
+    var order = which.slice().sort(function (a, b) {
+      // Big tiles first packs a full screen better; otherwise keep reading order.
+      if (bigFirst) {
+        var d = base[b].w * base[b].h - base[a].w * base[a].h;
+        if (d) return d;
+      }
+      return base[a].y - base[b].y || base[a].x - base[b].x;
+    });
+    for (var j = 0; j < order.length; j++) {
+      var r = base[order[j]];
+      var spot = near ? nearestFit(grid, g.cols, g.rows, r.w, r.h, r.x, r.y) : L.firstFit(grid, g.cols, g.rows, r.w, r.h);
+      if (!spot) return null;
+      L.mark(grid, spot[0], spot[1], r.w, r.h);
+      res[order[j]] = { x: spot[0], y: spot[1], w: r.w, h: r.h };
+    }
+    return res;
+  }
+
+  /**
+   * Where every tile goes when tile `mi` takes rectangle `to`, starting from `base` (cells before the gesture):
+   * a free spot; else the tiles under it swap into its old place; else they move to free cells; else everything
+   * else flows around it. Null when it cannot be done. Always computed from `base`, so it never oscillates.
+   */
+  function plan(base, mi, to) {
+    if (!inGrid(to)) return null;
+    var hit = [];
+    var i;
+    for (i = 0; i < base.length; i++) if (i !== mi && base[i] && hits(base[i], to)) hit.push(i);
+    var res = base.slice();
+    res[mi] = to;
+    if (!hit.length) return res;
+    var from = base[mi];
+    if (from) {
+      var dx = from.x - to.x;
+      var dy = from.y - to.y;
+      var ok = true;
+      var moved = {};
+      for (var h = 0; h < hit.length && ok; h++) {
+        var r = base[hit[h]];
+        var s = { x: r.x + dx, y: r.y + dy, w: r.w, h: r.h };
+        if (!inGrid(s) || hits(s, to)) ok = false;
+        for (var o = 0; o < base.length && ok; o++) {
+          if (o === mi || hit.indexOf(o) >= 0 || !base[o]) continue;
+          if (hits(s, base[o])) ok = false;
+        }
+        moved[hit[h]] = s;
+      }
+      if (ok) {
+        for (var k in moved) if (moved.hasOwnProperty(k)) res[k] = moved[k];
+        return res;
+      }
+    }
+    var r2 = relocate(base, mi, to, hit, true);
+    if (r2) return r2;
+    var all = [];
+    for (i = 0; i < base.length; i++) if (i !== mi && base[i]) all.push(i);
+    return relocate(base, mi, to, all, true) || relocate(base, mi, to, all, false) ||
+      relocate(base, mi, to, all, true, true) || relocate(base, mi, to, all, false, true);
+  }
+
+  /** Pins every tile on its planned cell and keeps the list in reading order. */
+  function applyPlan(res) {
+    var key = E.geo.key;
+    var pairs = [];
+    for (var i = 0; i < E.items.length; i++) {
+      var r = res[i];
+      if (r) {
+        var spec = E.items[i].spec;
+        spec.pos = spec.pos || {};
+        spec.pos[key] = [r.x, r.y];
+      }
+      pairs.push({ it: E.items[i], r: r });
+    }
+    pairs.sort(function (a, b) {
+      if (!a.r && !b.r) return 0;
+      if (!a.r) return 1;
+      if (!b.r) return -1;
+      return a.r.y - b.r.y || a.r.x - b.r.x;
+    });
+    E.items = pairs.map(function (p) { return p.it; });
+    E.face.tiles = E.items.map(function (it) { return it.tile; });
+    E.dirty = true;
+  }
+
+  function freeze() {
+    var key = E.geo.key;
+    for (var i = 0; i < E.items.length; i++) {
+      var b = E.items[i].box;
+      if (!b) continue;
+      var spec = E.items[i].spec;
+      spec.pos = spec.pos || {};
+      spec.pos[key] = [b.col, b.row];
+    }
+  }
+
   // ------------------------------------------------------------------ enter / leave
-  E.enter = function (f, tile) {
+  E.enter = function (f) {
     if (E.active || !E.canEdit(f)) return false;
     F.closeSheets();
     if (F.cc) F.cc.hide();
@@ -26,7 +176,7 @@
     E.dirty = false;
     E.selected = null;
     E.dragging = null;
-    // Tiles that do not fit are not on the screen: leave them out of the arrangement (they can be added back with +).
+    // Tiles that do not fit are not on the screen: leave them out (they can be added back with +).
     var all = F.gridSpecs(f);
     var fit = F.gridBoxes(f, all).boxes;
     var specs = [];
@@ -51,6 +201,7 @@
     F.cls(f.el, 'editing', true);
     F.cls(w.document.body, 'arranging', true);
     E.relayout(true);
+    freeze();
     E.dirty = specs.length !== all.length;
     showHint(F.t('edit_hint'), 5000);
     poke();
@@ -99,6 +250,7 @@
 
   function buildLayer(f) {
     var layer = f.editLayer = F.el('div', 'edit-layer', f.el);
+    E.ghost = F.el('div', 'edit-ghost', layer);
     E.badges = F.el('div', 'edit-badges', layer);
     E.sizebar = F.el('div', 'edit-sizebar', layer);
     E.sizeBtns = {};
@@ -126,12 +278,17 @@
     it.badge = action(F.el('div', 'edit-badge', E.badges), function () { remove(it); });
   }
 
-  /** Puts every tile in its spot for the current order and sizes (animated unless instant). */
+  function placeTile(it, px) {
+    it.tile.setBox(px.x, px.y, px.w, px.h);
+    if (it.badge) F.css(it.badge, { left: Math.round(px.x - 11) + 'px', top: Math.round(px.y - 11) + 'px' });
+  }
+
+  /** Puts every tile on its cell (animated unless instant). Returns how many tiles do not fit. */
   E.relayout = function (instant) {
     var f = E.face;
-    if (!f) return;
+    if (!f) return 0;
     var specs = E.items.map(function (it) { return it.spec; });
-    var geo = F.gridBoxes(f, specs);
+    var geo = E.geo = F.gridBoxes(f, specs);
     F.cls(f.el, 'edit-instant', Boolean(instant));
     var hidden = 0;
     for (var i = 0; i < E.items.length; i++) {
@@ -149,21 +306,13 @@
       }
       it.tile.el.style.display = '';
       it.badge.style.display = it === E.dragging ? 'none' : '';
-      F.css(it.badge, { left: Math.round(b.x - 11) + 'px', top: Math.round(b.y - 11) + 'px' });
-      if (it !== E.dragging) it.tile.setBox(b.x, b.y, b.w, b.h);
+      if (it !== E.dragging) placeTile(it, b);
     }
     F.placeWall(f, specs, geo.boxes);
     placeSizebar();
     if (instant) w.setTimeout(function () { if (E.face) F.cls(E.face.el, 'edit-instant', false); }, 40);
     return hidden;
   };
-
-  /** Would these tiles (in this order, at these sizes) all fit on the screen? */
-  function allFit(specs) {
-    var b = F.gridBoxes(E.face, specs).boxes;
-    for (var i = 0; i < b.length; i++) if (!b[i]) return false;
-    return true;
-  }
 
   function showHint(text, ms) {
     if (!E.hint) return;
@@ -202,15 +351,18 @@
 
   // ------------------------------------------------------------------ changes
   function setSize(it, size) {
-    if (!it || it.spec.size === size) return;
-    var trial = E.items.map(function (x) { return x === it ? { type: x.spec.type, size: size } : x.spec; });
-    if (!allFit(trial)) {
+    if (!it || !it.box || it.spec.size === size) return;
+    var span = spanOf(size);
+    var from = cellRect(it);
+    var to = { x: Math.min(from.x, E.geo.cols - span[0]), y: Math.min(from.y, E.geo.rows - span[1]), w: span[0], h: span[1] };
+    var res = plan(E.items.map(cellRect), E.items.indexOf(it), to);
+    if (!res) {
       showHint(F.t('no_room_left'), 3500);
       return;
     }
     it.spec.size = size;
     it.tile.el.className = it.tile.el.className.replace(/\bsize-\w+\b/, 'size-' + size);
-    E.dirty = true;
+    applyPlan(res);
     E.relayout(false);
     select(it);
     poke();
@@ -231,20 +383,30 @@
 
   function add(spec) {
     var f = E.face;
-    var specs = E.items.map(function (x) { return x.spec; });
-    if (!allFit(specs.concat([spec]))) {
-      spec.size = 'S';
-      if (!allFit(specs.concat([spec]))) {
-        showHint(F.t('no_room_left'), 4000);
-        return;
-      }
+    var g = E.geo;
+    var grid = L.emptyGrid(g.cols, g.rows);
+    for (var i = 0; i < E.items.length; i++) {
+      var r = cellRect(E.items[i]);
+      if (r) L.mark(grid, r.x, r.y, r.w, r.h);
     }
+    var span = spanOf(spec.size);
+    var spot = L.firstFit(grid, g.cols, g.rows, span[0], span[1]);
+    if (!spot && spec.size !== 'S') {
+      spec.size = 'S';
+      spot = L.firstFit(grid, g.cols, g.rows, 1, 1);
+    }
+    if (!spot) {
+      showHint(F.t('no_room_left'), 4000);
+      return;
+    }
+    spec.pos = {};
+    spec.pos[g.key] = spot;
     var it = { spec: spec, tile: new F.Tile(spec, f) };
     f.grid.appendChild(it.tile.el);
     E.items.push(it);
-    E.relayout(true);
     f.tiles = E.items.map(function (x) { return x.tile; });
     E.dirty = true;
+    E.relayout(true);
     select(it);
     poke();
   }
@@ -252,6 +414,7 @@
   function replace(it, spec) {
     var f = E.face;
     spec.size = it.spec.size;
+    if (it.spec.pos) spec.pos = copy(it.spec.pos);
     var t = new F.Tile(spec, f);
     f.grid.insertBefore(t.el, it.tile.el);
     if (it.tile.el.parentNode) it.tile.el.parentNode.removeChild(it.tile.el);
@@ -322,48 +485,50 @@
   function startDrag(it, x, y) {
     E.dragging = it;
     it.grab = { x: x - it.box.x, y: y - it.box.y };
+    E.base = E.items.map(cellRect);
+    E.target = null;
+    E.plan = null;
     F.cls(it.tile.el, 'lifted', true);
     it.badge.style.display = 'none';
     select(null);
     placeSizebar();
+    F.cls(E.ghost, 'show', true);
+    updateTarget(it, x, y);
   }
 
   function follow(it, x, y) {
     var b = it.box;
-    if (!b) return;
     F.transform(it.tile.el, 'translate3d(' + Math.round(x - it.grab.x - b.x) + 'px,' + Math.round(y - it.grab.y - b.y) + 'px,0) scale(1.05)');
+  }
+
+  /** The cell under the dragged tile; the others preview where they would go. */
+  function updateTarget(it, x, y) {
+    var g = E.geo;
+    var mi = E.items.indexOf(it);
+    var from = E.base[mi];
+    var col = Math.round((x - it.grab.x - g.pad) / (g.cw + g.gap));
+    var row = Math.round((y - it.grab.y - g.top - g.pad) / (g.ch + g.gap));
+    col = F.clamp(col, 0, g.cols - from.w);
+    row = F.clamp(row, 0, g.rows - from.h);
+    if (E.target && E.target.x === col && E.target.y === row) return;
+    var to = { x: col, y: row, w: from.w, h: from.h };
+    E.target = to;
+    var same = col === from.x && row === from.y;
+    E.plan = same ? null : plan(E.base, mi, to);
+    var px = pixelRect(to);
+    F.css(E.ghost, { left: Math.round(px.x) + 'px', top: Math.round(px.y) + 'px', width: Math.round(px.w) + 'px', height: Math.round(px.h) + 'px' });
+    F.cls(E.ghost, 'bad', !same && !E.plan);
+    var rects = E.plan || E.base;
+    for (var i = 0; i < E.items.length; i++) {
+      if (i === mi || !rects[i]) continue;
+      placeTile(E.items[i], pixelRect(rects[i]));
+    }
   }
 
   function moveDrag(x, y) {
     var it = E.dragging;
     follow(it, x, y);
-    var now = F.now();
-    if (now - (E.lastSwap || 0) < 160) return;
-    var from = E.items.indexOf(it);
-    var target = -1;
-    for (var i = 0; i < E.items.length; i++) {
-      var o = E.items[i];
-      if (o === it || !o.box) continue;
-      var b = o.box;
-      var mx = b.w * 0.15;
-      var my = b.h * 0.15;
-      if (x > b.x + mx && x < b.x + b.w - mx && y > b.y + my && y < b.y + b.h - my) {
-        target = i;
-        break;
-      }
-    }
-    if (target < 0 || target === from) return;
-    var order = E.items.slice();
-    order.splice(from, 1);
-    order.splice(target, 0, it);
-    // A move that would push a tile off the screen is not made.
-    if (!allFit(order.map(function (z) { return z.spec; }))) return;
-    E.items = order;
-    E.relayout(false);
-    E.lastSwap = now;
-    E.dirty = true;
-    E.face.tiles = E.items.map(function (z) { return z.tile; });
-    follow(it, x, y);
+    updateTarget(it, x, y);
   }
 
   function drop() {
@@ -371,6 +536,13 @@
     E.dragging = null;
     F.cls(it.tile.el, 'lifted', false);
     F.transform(it.tile.el, '');
+    F.cls(E.ghost, 'show', false);
+    var moved = E.target && E.base && (E.target.x !== E.base[E.items.indexOf(it)].x || E.target.y !== E.base[E.items.indexOf(it)].y);
+    if (E.plan) applyPlan(E.plan);
+    else if (moved) showHint(F.t('cannot_move_here'), 3000);
+    E.plan = null;
+    E.target = null;
+    E.base = null;
     E.relayout(false);
     select(it);
     poke();
@@ -508,11 +680,10 @@
         }, 15000);
       });
     });
-    if (F.store.session && F.store.session.admin) {
-      F.button(btns, F.t('all_settings'), 'cog', '', function () {
-        E.finish(true);
-        w.location.href = 'settings';
-      });
-    }
+    F.button(btns, F.t('all_settings'), 'cog', '', function () {
+      sheet.close();
+      E.finish(true);
+      F.settingsUI.show('display');
+    });
   }
 }(window));

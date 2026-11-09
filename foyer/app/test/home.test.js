@@ -34,6 +34,8 @@ test('loads a Home Assistant home over the WebSocket API and keeps only what a w
   assert.ok(!ids.includes('switch.zigbee2mqtt_bridge_permit_join'), 'config entities are hidden');
   assert.ok(!ids.includes('binary_sensor.capteur_porte_entree_battery_low'), 'diagnostic entities are hidden');
   assert.ok(!ids.includes('button.nas_shut_down'), 'config buttons are hidden');
+  assert.ok(!ids.includes('switch.foyer_releve_homepod'), 'the "Masquer dans Foyer" label hides an entity');
+  assert.ok(ids.includes('switch.guirlande'), 'other switches stay');
   assert.ok(!ids.includes('update.home_assistant_core_update'), 'updates never reach an iPad');
 
   // Area comes from the device; the area name is taken out of the display name.
@@ -56,7 +58,7 @@ test('loads a Home Assistant home over the WebSocket API and keeps only what a w
   await assert.rejects(model.source.picture('https://evil.example.com/x.png'), /refused/);
 
   assert.strictEqual(model.blocks.calendar.events[0].title, 'Dentiste');
-  assert.deepStrictEqual(model.blocks.todo.lists['todo.rappels'], { open: [{ t: 'Pain', due: null }], done: 1 });
+  assert.deepStrictEqual(model.blocks.todo.lists['todo.rappels'], { open: [{ t: 'Pain', due: null, uid: '1' }], done: 1 });
   assert.strictEqual(model.blocks.weather.entity, 'weather.forecast_maison');
 
   // A state change reaches long-polling clients as a delta.

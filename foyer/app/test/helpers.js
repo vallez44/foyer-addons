@@ -30,7 +30,10 @@ function realisticHome() {
       ['switch.guirlande', 'd6'], ['binary_sensor.capteur_porte_entree_contact', 'd7'], ['binary_sensor.detecteur_vitre_salon_contact', 'd8'],
       ['binary_sensor.capteur_porte_entree_battery_low', 'd7', 'diagnostic'], ['switch.zigbee2mqtt_bridge_permit_join', 'd9', 'config'],
       ['button.nas_shut_down', null, 'config'], ['media_player.enceinte_chambre', 'd10'],
-    ].map(([entity_id, device_id, entity_category]) => ({ entity_id, device_id, area_id: null, entity_category: entity_category || null, hidden_by: null, disabled_by: null })),
+      ['switch.foyer_releve_homepod', null, null, ['masquer_dans_foyer']],
+    ].map(([entity_id, device_id, entity_category, labels]) => ({
+      entity_id, device_id, area_id: null, entity_category: entity_category || null, hidden_by: null, disabled_by: null, labels: labels || [],
+    })),
     states: [
       st('light.lampe_chambre_1', 'off', { friendly_name: 'Lampe Chambre 1', supported_color_modes: ['brightness'] }),
       st('light.lampe_sdb', 'unavailable', { friendly_name: 'Lampe SDB', supported_color_modes: ['brightness'] }),
@@ -38,6 +41,7 @@ function realisticHome() {
       st('light.lampe_entree', 'off', { friendly_name: 'Lampe Entrée', supported_color_modes: ['brightness'] }),
       st('light.lampe_2', 'on', { friendly_name: 'Lampe 2', brightness: 128, supported_color_modes: ['color_temp', 'xy'] }),
       st('switch.guirlande', 'off', { friendly_name: 'Guirlande' }),
+      st('switch.foyer_releve_homepod', 'off', { friendly_name: 'Foyer relevé HomePod' }),
       st('switch.zigbee2mqtt_bridge_permit_join', 'off', { friendly_name: 'Zigbee2MQTT Bridge Permit join' }),
       st('button.nas_shut_down', 'unknown', { friendly_name: 'NAS Arrêter' }),
       st('binary_sensor.capteur_porte_entree_contact', 'off', { friendly_name: 'Capteur Porte Entrée', device_class: 'door' }),

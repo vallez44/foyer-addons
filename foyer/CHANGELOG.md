@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.0
+
+- **Réglages dans Foyer, comme ceux de l'iPad** : liste à gauche avec icônes de couleur, page à droite, menus
+  déroulants, interrupteurs, recherche ; clairs ou sombres selon l'iPad. Ouverts depuis le Centre de contrôle ou
+  l'icône Réglages, sur tous les écrans (les réglages des écrans associés et de la sécurité restent réservés).
+- **Apps** : balayez vers le haut depuis le bas d'un cadran. Musique, Calendrier, Rappels, Météo, Photos,
+  Minuteurs, Horloge mondiale, Home Assistant, Réglages, et sur iPad les apps d'Apple (Musique, Calendrier,
+  Rappels, Podcasts, TV, Localiser, Raccourcis, Plans…). Réglages → Apps : ouvrir l'app de Foyer ou celle d'Apple.
+- **Musique sur les HomePod** : choisir le HomePod, lecture, volume, et parcourir radios et médias de Home
+  Assistant ; playlists Apple Music avec Music Assistant, ou par l'app Musique d'Apple (AirPlay).
+- **Agenda et rappels** : nouvel événement (iCloud par CalDAV, donc aussi sur l'iPhone), listes de rappels
+  (ajouter, cocher), agenda par défaut.
+- **Température et humidité des HomePod** : capteurs par pièce alimentés par une automatisation de l'app Maison
+  (voir la documentation).
+- **Tablette Android** : manifeste d'application web (Chrome → Installer l'application), documentation Fully Kiosk.
+- Tuiles : effet verre plus marqué avec reflet, icônes pleines ; déplacement des tuiles corrigé (la tuile va
+  exactement où on la lâche, les autres se décalent sans sauter).
+- Étiquette **Masquer dans Foyer** pour écarter une entité des écrans.
+
 ## 0.2.0
 
 - **Disposer les tuiles directement sur l'écran** : maintenez une tuile (ou Centre de contrôle → Modifier la

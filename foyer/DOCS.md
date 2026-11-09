@@ -22,11 +22,11 @@ dans la barre latérale. Home Assistant vérifie qui vous êtes ; Foyer ne voit 
 
 **En plein écran (recommandé pour un iPad au mur).** Dans Foyer ouvert depuis la barre latérale, tirez vers le
 bas depuis le haut de l'écran (Centre de contrôle) et touchez **Plein écran sur cet iPad**, ou allez dans
-**Réglages → iPad → Ouvrir Foyer en plein écran**. Safari ouvre Foyer sur son propre port. Touchez
+**Réglages → Écran d'accueil et autres iPad**. Safari ouvre Foyer sur son propre port. Touchez
 **Partager → Sur l'écran d'accueil → Ajouter**, puis ouvrez Foyer depuis sa nouvelle icône : il s'associe tout seul.
 
-**Anciens iPad (ou écran sans compte Home Assistant).** Dans **Réglages → iPad → Créer une fiche
-d'installation**, Foyer affiche une adresse (`http://<adresse-de-home-assistant>:8110`), un QR code et un code
+**Anciens iPad, tablette Android, écran sans compte Home Assistant.** Dans **Réglages → Écran d'accueil et autres
+iPad → Créer une fiche d'installation**, Foyer affiche une adresse (`http://<adresse-de-home-assistant>:8110`), un QR code et un code
 valable une seule fois pendant 7 jours. Le journal de l'add-on affiche aussi un code au premier démarrage.
 Sur l'iPad : ouvrez l'adresse dans Safari, ajoutez-la à l'écran d'accueil, ouvrez l'icône et tapez le code.
 
@@ -58,7 +58,8 @@ les autres s'activent dans **Réglages → Cadrans**.
 - **Glisser vers le haut ou le bas sur une lumière**, un volet ou un ventilateur : règle le niveau.
 - **Flèches du thermostat** : changent la consigne (envoyée une seconde après le dernier appui).
 - **Tirer vers le bas depuis le haut** : le Centre de contrôle (musique, luminosité de l'écran, volume,
-  première lumière, première serrure, une scène, Réglages).
+  première lumière, première serrure, une scène, Apps, Réglages).
+- **Balayer vers le haut depuis le bas d'un cadran** : les Apps (voir plus bas).
 - Une tuile **blanche** est allumée ; une tuile **rouge** demande votre attention (porte ouverte, serrure
   déverrouillée).
 
@@ -79,20 +80,139 @@ peuvent être ajoutés que depuis Home Assistant (barre latérale), car ils peuv
 
 ## Réglages
 
-Ouvrez Foyer depuis la barre latérale puis **Réglages** (Centre de contrôle ou roue dentée) :
+Les Réglages s'ouvrent dans Foyer, comme l'app Réglages de l'iPad (clairs ou sombres selon l'iPad) :
+Centre de contrôle → **Réglages**, ou l'icône **Réglages** des Apps. À gauche la liste, à droite la page choisie
+(en portrait sur un petit iPad, une page à la fois). Touchez une valeur suivie de ⌃⌄ pour choisir dans un menu.
 
-- **Cadrans** : lesquels, dans quel ordre, et celui de départ (étoile).
-- **Disposition** : les tuiles de Maison Modulaire et Maison Modulaire Plus. Par défaut, Foyer les choisit à
-  partir de vos pièces et appareils ; **Personnaliser** permet de choisir chaque tuile et sa taille
-  (petite 1×1, large 2×1, haute 1×2, moyenne 2×2, grande 3×2, très grande 4×2).
-- **Photos** : ajoutées depuis un téléphone ou un ordinateur, réduites avant l'envoi, rangées dans
+- **Home Assistant** : l'état de la connexion, et un lien pour ouvrir Home Assistant.
+- **Écran d'accueil et autres iPad** *(Home Assistant ou premier écran)* : Foyer en plein écran sur cet iPad,
+  fiche d'installation (adresse, QR code, code à usage unique) pour un autre iPad ou une tablette Android.
+- **Écrans associés** *(idem)* : renommer, retirer.
+- **Cadrans** : lesquels, dans quel ordre, et celui de départ.
+- **Photos** : ajoutées depuis l'iPad, un téléphone ou un ordinateur, réduites avant l'envoi, rangées dans
   `/media/foyer/photos`.
-- **iPad** : plein écran, fiche d'installation, écrans associés (renommer, retirer).
-- **Options** : fond d'écran, style verre ou plat, mode nuit (horaires, cadran, assombrissement), météo,
-  thermostat, enceinte et agendas utilisés, sécurité.
+- **Affichage et nuit** : fond d'écran, verre ou plat, luminosité de cet écran, mode nuit (horaires, cadran,
+  assombrissement), retour au cadran de départ, langue.
+- **Apps**, **Musique**, **Agenda et rappels**, **Capteurs des HomePod** : voir les parties suivantes.
+- **Sécurité** *(Home Assistant ou premier écran)*, **À propos**, **Confidentialité**.
 
-Foyer utilise les **pièces** de Home Assistant : donnez une pièce à vos appareils (Paramètres → Pièces).
-Les entités masquées, de configuration ou de diagnostic sont laissées de côté.
+La disposition des tuiles se règle directement sur l'écran (partie précédente). Foyer utilise les **pièces** de
+Home Assistant : donnez une pièce à vos appareils (Paramètres → Pièces). Les entités masquées, de configuration ou
+de diagnostic sont laissées de côté, comme celles qui portent l'étiquette **Masquer dans Foyer**.
+
+## Apps
+
+Balayez vers le haut depuis le bas d'un cadran (ou Centre de contrôle → **Apps**) : un écran d'accueil s'ouvre.
+
+- **Les apps de Foyer** : Maison, Musique, Calendrier, Rappels, Météo, Photos, Minuteurs (ils sonnent sur cet
+  écran), Horloge mondiale, Home Assistant, Réglages.
+- **Les apps d'Apple**, sur iPad : Maison, Musique, Calendrier, Rappels, Météo, Photos, Minuteurs, Alarmes,
+  Horloge mondiale, Podcasts, News, Livres, TV, Safari, Localiser, Raccourcis, Plans.
+
+**Réglages → Apps** choisit, pour chaque app qui existe des deux côtés, si l'icône ouvre celle de Foyer ou
+**celle d'Apple** (Musique ouvre celle d'Apple par défaut), et les icônes à montrer. L'app d'Apple prend tout
+l'écran ; balayez vers le haut pour revenir à Foyer. Avec l'Accès guidé, les apps d'Apple ne s'ouvrent pas.
+
+## Musique et HomePod
+
+Les HomePod et l'Apple TV arrivent dans Home Assistant par l'intégration **Apple TV** (une entité « lecteur
+multimédia » par HomePod). Foyer les montre dans le Centre de contrôle, sur les tuiles Musique et dans l'app
+**Musique** : choisir le HomePod, lecture/pause, morceau précédent/suivant, volume, et **Parcourir** ce que
+Home Assistant sait lui envoyer (radios de Radio Browser, médias locaux…).
+
+**Apple Music.** Apple ne permet pas à Home Assistant de lancer une playlist Apple Music sur un HomePod.
+Deux possibilités :
+
+- l'**app Musique d'Apple** sur l'iPad (Apps → Musique) : choisissez la sortie AirPlay (le HomePod) dans l'app ;
+  Foyer affiche ensuite le morceau en cours et le pilote ;
+- **Music Assistant** (add-on de Home Assistant) avec les fournisseurs **Apple Music** et **AirPlay** : vos playlists
+  apparaissent alors dans **Parcourir** et se lancent sur les HomePod depuis Foyer.
+
+**Réglages → Musique** choisit l'enceinte par défaut et indique ce qui est disponible.
+
+## Agenda et rappels (avec l'iPhone)
+
+Foyer lit les agendas de Home Assistant. Pour vos agendas **iCloud**, ajoutez l'intégration **CalDAV**
+(`https://caldav.icloud.com`, identifiant Apple et **mot de passe pour app** créé sur account.apple.com) :
+un événement ajouté dans Foyer (bouton **+** de la page Agenda, ou Réglages → Agenda et rappels → Nouvel
+événement) est écrit dans iCloud et apparaît sur l'iPhone, et inversement.
+
+L'app **Rappels** de Foyer montre les listes de Home Assistant (dont la liste de courses) : ajouter, cocher.
+**Réglages → Agenda et rappels** choisit les agendas affichés et celui des nouveaux événements.
+
+## Température et humidité des HomePod
+
+Les HomePod (et HomePod mini) mesurent la température et l'humidité, mais Apple ne les partage qu'avec l'app
+Maison. On les fait passer par une automatisation de l'app Maison, exécutée par le HomePod lui-même :
+
+1. **Dans Home Assistant**, il faut :
+   - pour chaque pièce, deux valeurs texte masquées (*Foyer HomePod Chambre température*, …) et deux capteurs
+     **Température Chambre** / **Humidité Chambre** (modèles, rangés dans la pièce) ;
+   - un interrupteur **Foyer relevé HomePod** (modèle, sans état), visible dans l'app Maison grâce au pont
+     HomeKit (domaine `switch`), et une automatisation qui l'allume toutes les 15 minutes ;
+   - une automatisation **Foyer – mesures des HomePod** déclenchée par un **webhook local** (voir le YAML
+     ci-dessous ; remplacez l'identifiant par une longue suite de caractères au hasard).
+2. **Dans l'app Maison d'Apple** (iPhone ou iPad) : **Automatisation → + → Un accessoire est contrôlé →
+   Foyer relevé HomePod → S'allume → Suivant**, puis tout en bas **Convertir en raccourci** :
+   - ajoutez l'action **Obtenir l'état de** (Maison) pour chaque mesure : capteur de température du HomePod de
+     la chambre → *Température actuelle*, capteur d'humidité → *Humidité relative actuelle*, et ainsi de suite ;
+   - ajoutez **Obtenir le contenu de l'URL** : l'adresse du webhook
+     (`http://<adresse-de-home-assistant>:8123/api/webhook/<identifiant>`), **Méthode POST**, **Corps de la
+     requête JSON**, un champ **Nombre** par mesure : `chambre_t`, `chambre_h`, `sdb_t`, `sdb_h`, `salon_t`,
+     `salon_h` ;
+   - **OK**. Les mesures arrivent au plus tard 15 minutes après, et s'affichent dans les pièces de Foyer.
+
+Le webhook n'accepte que le réseau local. Un champ absent ou illisible est ignoré.
+
+```yaml
+alias: Foyer – mesures des HomePod
+mode: queued
+triggers:
+  - trigger: webhook
+    webhook_id: foyer_homepods_REMPLACEZ_PAR_UNE_LONGUE_SUITE_AU_HASARD
+    allowed_methods: [POST, PUT]
+    local_only: true
+actions:
+  - variables:
+      payload: "{{ trigger.json if trigger.json is defined and trigger.json is mapping else {} }}"
+      targets:
+        - { key: chambre_t, entity: input_text.foyer_homepod_chambre_temperature }
+        - { key: chambre_h, entity: input_text.foyer_homepod_chambre_humidite }
+        - { key: sdb_t, entity: input_text.foyer_homepod_salle_de_bain_temperature }
+        - { key: sdb_h, entity: input_text.foyer_homepod_salle_de_bain_humidite }
+        - { key: salon_t, entity: input_text.foyer_homepod_salon_temperature }
+        - { key: salon_h, entity: input_text.foyer_homepod_salon_humidite }
+  - repeat:
+      for_each: "{{ targets }}"
+      sequence:
+        - variables:
+            found: >-
+              {% set raw = payload.get(repeat.item.key) %}{% set m = ((raw if raw is not none else '')
+              | string | replace(',', '.')) | regex_findall('-?[0-9]+(?:[.][0-9]+)?') %}{{ (m[0] | float
+              | round(1)) if m | count > 0 else '' }}
+        - if:
+            - condition: template
+              value_template: "{{ found | string | length > 0 }}"
+          then:
+            - action: input_text.set_value
+              target: { entity_id: "{{ repeat.item.entity }}" }
+              data: { value: "{{ found }}" }
+              continue_on_error: true
+```
+
+## Tablette Android
+
+Foyer est une page web : il fonctionne aussi sur une tablette Android, avec **Chrome** ou, pour un écran mural,
+**Fully Kiosk Browser**.
+
+1. Créez une fiche d'installation (Réglages → Écran d'accueil et autres iPad) et ouvrez l'adresse
+   `http://<adresse-de-home-assistant>:8110` sur la tablette (ou scannez le QR code), puis tapez le code.
+2. Dans Chrome : **⋮ → Ajouter à l'écran d'accueil** (ou **Installer l'application**) : Foyer s'ouvre ensuite en
+   plein écran depuis son icône. Dans Fully Kiosk : mettez l'adresse en page de démarrage et activez
+   « Garder l'écran allumé ».
+
+Tout fonctionne de la même façon (cadrans, tuiles, musique sur les HomePod par Home Assistant, agenda, rappels,
+minuteurs), sauf les raccourcis vers les apps d'Apple, qui n'existent que sur iPad et iPhone.
 
 ## Sécurité et vie privée
 
@@ -130,4 +250,4 @@ Ne redirigez pas le port 8110 depuis votre box Internet.
 
 Le dossier `standalone` contient un `docker-compose.yml` : Foyer tourne alors dans son propre conteneur à côté
 de Home Assistant, avec un jeton longue durée dans `foyer.env`. Le premier écran associé (code du journal)
-devient l'écran administrateur, qui seul peut ouvrir les Réglages.
+devient l'écran administrateur : lui seul voit les Réglages des écrans associés et de la sécurité.

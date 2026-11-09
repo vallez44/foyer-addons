@@ -73,6 +73,13 @@ class HASource extends EventEmitter {
     return this.conn.callService(domain, service, data, target);
   }
 
+  browseMedia(entityId, contentId, contentType) {
+    const msg = { type: 'media_player/browse_media', entity_id: entityId };
+    if (contentId) msg.media_content_id = contentId;
+    if (contentType) msg.media_content_type = contentType;
+    return this.conn.command(msg, 30000);
+  }
+
   async cameraImage(entityId) {
     return readPicture(await this.conn.rest(`/camera_proxy/${encodeURIComponent(entityId)}`));
   }

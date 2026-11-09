@@ -45,9 +45,14 @@ function createApp(cfg, deps = {}) {
     return {
       faces: s.faces, startFace: s.startFace, wallpaper: s.wallpaper, style: s.style, night: s.night,
       photoInterval: s.photoInterval, returnAfter: s.returnAfter, speaker: s.speaker, lang: s.lang,
-      thermostatEntity: s.thermostatEntity,
+      thermostatEntity: s.thermostatEntity, weatherEntity: s.weatherEntity, calendars: s.calendars,
+      defaultCalendar: s.defaultCalendar, apps: s.apps, sensitiveFromHaOnly: s.sensitiveFromHaOnly || cfg.sensitiveFromHaOnly,
     };
   }
+
+  /** Settings any screen of the home may change from the screen itself (Settings in Foyer). */
+  const SCREEN_PREFS = ['faces', 'startFace', 'wallpaper', 'style', 'night', 'returnAfter', 'photoInterval', 'speaker', 'apps', 'lang',
+    'calendars', 'defaultCalendar', 'weatherEntity', 'thermostatEntity'];
 
   function computeLayouts() {
     const s = store.settings;
@@ -78,6 +83,24 @@ function createApp(cfg, deps = {}) {
   home.on('loaded', publishAll);
   home.on('entities-changed', publishLayoutSoon);
   home.on('change', flushWaiters);
+
+
+  // ---------------------------------------------------------------- music browsing (Home Assistant's media browser)
+  function thumb(t) {
+    if (typeof t !== 'string' || !t || t.length > 2000) return null;
+    if (/^https?:\/\/[^\s"'<>]+$/i.test(t)) return t;
+    if (t.startsWith('/api/')) return `api/picture?path=${encodeURIComponent(t)}`;
+    return null;
+  }
+  function browseItem(x) {
+    return {
+      title: String((x && x.title) || '').slice(0, 200), id: x && x.media_content_id, type: x && x.media_content_type,
+      cls: (x && x.media_class) || null, play: Boolean(x && x.can_play), open: Boolean(x && x.can_expand), thumb: thumb(x && x.thumbnail),
+    };
+  }
+  function browseResult(r) {
+    return { ...browseItem(r || {}), children: ((r && r.children) || []).slice(0, 300).map(browseItem) };
+  }
 
   // ---------------------------------------------------------------- long-poll
   function flushWaiters() {
@@ -278,9 +301,20 @@ function createApp(cfg, deps = {}) {
 
     if (m === 'GET' || m === 'HEAD') {
       if (p === '/' || p === '/index.html') return servePage(req, res, 'index.html');
-      if (p === '/settings') {
-        if (!ctx.admin) return send(req, res, 302, '', 'text/plain', { Location: './' });
-        return servePage(req, res, 'settings.html');
+      // Settings now live inside the dashboard (like the iPad's Settings app).
+      if (p === '/settings') return send(req, res, 302, '', 'text/plain', { Location: './?settings=1' });
+      if (p === '/manifest.webmanifest') {
+        let start = url.searchParams.get('start') || './';
+        if (!/^\/[\w\-./?=&%]*$/.test(start) || start.startsWith('//')) start = './';
+        const manifest = {
+          name: 'Foyer', short_name: 'Foyer', start_url: start, scope: './', display: 'standalone', orientation: 'any',
+          background_color: '#000000', theme_color: '#000000',
+          icons: [
+            { src: 'img/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+            { src: 'img/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          ],
+        };
+        return send(req, res, 200, JSON.stringify(manifest), 'application/manifest+json; charset=utf-8', { 'Cache-Control': 'no-cache' });
       }
       if (/^\/(js|css|img)\/[\w./-]+$/.test(p)) {
         return serveStatic(req, res, p.slice(1), url.searchParams.has('v') && process.env.FOYER_DEV !== '1');
@@ -318,6 +352,58 @@ function createApp(cfg, deps = {}) {
 
     if (p === '/api/snapshot' && m === 'GET') {
       return sendJson(req, res, 200, { ...home.snapshot(), session: sessionInfo(ctx) });
+    }
+
+    if (p === '/api/prefs' && m === 'PUT') {
+      const body = await readBody(req, 64 * 1024);
+      const patch = {};
+      for (const k of Object.keys(body || {})) {
+        if (SCREEN_PREFS.includes(k) || (ctx.admin && k === 'sensitiveFromHaOnly')) patch[k] = body[k];
+      }
+      const prev = store.settings;
+      const next = sanitizeSettings(patch, prev);
+      store.setSettings(next);
+      applySettings(prev);
+      return sendJson(req, res, 200, { ok: true, settings: clientSettings() });
+    }
+
+    // Photos can be added from any screen (they stay in /media/foyer/photos).
+    if (p === '/api/photos' && m === 'POST') {
+      const buf = await readBody(req, 20 * 1024 * 1024, false);
+      const item = photos.add(buf, { w: parseInt(url.searchParams.get('w'), 10), h: parseInt(url.searchParams.get('h'), 10) });
+      home.setBlock('photos', photos.block());
+      return sendJson(req, res, 200, { ok: true, id: item.id });
+    }
+    const ph = /^\/api\/photos\/([0-9a-f]{12})(\/move)?$/.exec(p);
+    if (ph) {
+      let ok = false;
+      if (!ph[2] && m === 'DELETE') ok = photos.remove(ph[1]);
+      else if (ph[2] && m === 'POST') ok = photos.move(ph[1], url.searchParams.get('d') === '-1' ? -1 : 1);
+      else return sendJson(req, res, 405, { error: 'method' });
+      home.setBlock('photos', photos.block());
+      return sendJson(req, res, ok ? 200 : 404, { ok });
+    }
+
+    if (p === '/api/browse' && m === 'GET') {
+      const id = url.searchParams.get('entity_id') || '';
+      if (!/^media_player\.[a-z0-9_]+$/.test(id) || !home.isEligible(id)) return sendJson(req, res, 404, { error: 'unknown speaker' });
+      if (!source.browseMedia) return sendJson(req, res, 501, { error: 'browsing is not available' });
+      try {
+        const r = await source.browseMedia(id, url.searchParams.get('id') || undefined, url.searchParams.get('type') || undefined);
+        return sendJson(req, res, 200, browseResult(r));
+      } catch (e) {
+        return sendJson(req, res, 502, { error: e.message });
+      }
+    }
+
+    const pic = p === '/api/picture' && m === 'GET' ? url.searchParams.get('path') : null;
+    if (pic) {
+      try {
+        const img = await source.picture(pic);
+        return send(req, res, 200, img.body, img.type, { 'Cache-Control': 'private, max-age=86400' });
+      } catch (e) {
+        return send(req, res, 404, 'Not found');
+      }
     }
 
     if (p === '/api/arrange' && m === 'PUT') {
@@ -358,7 +444,8 @@ function createApp(cfg, deps = {}) {
       const epoch = url.searchParams.get('e') || '';
       const d = home.delta(since, epoch);
       if (d === null) return sendJson(req, res, 200, { resync: true });
-      if (d.n > 0) return sendJson(req, res, 200, d);
+      // wait=0: answer at once (the screen checks that it is back online before waiting again).
+      if (d.n > 0 || url.searchParams.get('wait') === '0') return sendJson(req, res, 200, d);
       const w = { since, epoch, req, res, deviceId: ctx.device ? ctx.device.id : null };
       w.timer = setTimeout(() => finishWaiter(w, 200, { epoch: home.epoch, v: home.v, e: {}, b: {}, n: 0 }), POLL_TIMEOUT);
       waiters.add(w);
@@ -379,6 +466,8 @@ function createApp(cfg, deps = {}) {
           ctx, home, layoutEntities, settings: store.settings, sensitiveFromHaOnly: cfg.sensitiveFromHaOnly,
         });
         for (const c of calls) await source.callService(c.domain, c.service, c.data, c.target);
+        // A new event does not always change the calendar's state: fetch the events again.
+        if (calls.some((c) => c.domain === 'calendar')) setTimeout(() => home.loadCalendar().catch(() => {}), 800);
         return sendJson(req, res, 200, { ok: true, calls: calls.length });
       } catch (e) {
         if (e instanceof PolicyError) return sendJson(req, res, e.status, { error: e.message });

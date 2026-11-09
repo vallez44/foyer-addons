@@ -144,7 +144,7 @@
     hourly: 'Prochaines heures', daily: 'Prochains jours', low: 'Min', high: 'Max', no_devices: 'Aucun appareil', error: 'Action refusée', on_s: 'allumé', on_fs: 'allumée',
     edit_layout: 'Modifier la disposition', edit_done: 'OK', customize: 'Personnaliser', add_tile: 'Ajouter une tuile', change_tile: 'Changer la tuile',
     layout_saved: 'Disposition enregistrée', no_room_left: 'Plus de place : réduisez ou retirez une tuile', hidden_tiles_1: '1 tuile ne tient pas sur l\'écran',
-    hidden_tiles_n: '{n} tuiles ne tiennent pas sur l\'écran', edit_hint: 'Glissez une tuile pour la déplacer · touchez-la pour changer sa taille',
+    hidden_tiles_n: '{n} tuiles ne tiennent pas sur l\'écran', cannot_move_here: 'Pas assez de place à cet endroit', edit_hint: 'Glissez une tuile pour la déplacer · touchez-la pour changer sa taille',
     widgets: 'Widgets', devices: 'Appareils', no_room: 'Sans pièce', wallpaper: 'Fond d\'écran', back_to_suggestion: 'Revenir à la suggestion automatique',
     all_settings: 'Tous les réglages', confirm_ok: 'Oui', w_clock: 'Horloge', w_weather: 'Météo', w_photo: 'Photo', w_agenda: 'À venir', w_media: 'Musique',
     w_house: 'Maison', w_all_off: 'Tout éteindre', w_date: 'Date', w_sun: 'Soleil', w_thermostat: 'Thermostat', w_temperature: 'Température', w_list: 'Liste'
@@ -174,7 +174,7 @@
     no_devices: 'No devices', error: 'Refused', on_s: 'on', on_fs: 'on',
     edit_layout: 'Arrange tiles', edit_done: 'Done', customize: 'Customize', add_tile: 'Add a tile', change_tile: 'Change tile',
     layout_saved: 'Layout saved', no_room_left: 'No room left: make a tile smaller or remove one', hidden_tiles_1: '1 tile does not fit on the screen',
-    hidden_tiles_n: '{n} tiles do not fit on the screen', edit_hint: 'Drag a tile to move it · tap it to change its size',
+    hidden_tiles_n: '{n} tiles do not fit on the screen', cannot_move_here: 'Not enough room there', edit_hint: 'Drag a tile to move it · tap it to change its size',
     widgets: 'Widgets', devices: 'Devices', no_room: 'No room', wallpaper: 'Wallpaper', back_to_suggestion: 'Back to the suggested layout',
     all_settings: 'All settings', confirm_ok: 'Yes', w_clock: 'Clock', w_weather: 'Weather', w_photo: 'Photo', w_agenda: 'Up Next', w_media: 'Music',
     w_house: 'Home', w_all_off: 'All Off', w_date: 'Date', w_sun: 'Sun', w_thermostat: 'Thermostat', w_temperature: 'Temperature', w_list: 'List'
@@ -325,36 +325,51 @@
     return false;
   };
 
+  /** A filled glyph that says what the thing is (the tile's colour says whether it is on). */
+  function lightGlyph(nm) {
+    if (/chevet|bedside|table de nuit/.test(nm)) return 'lamp';
+    if (/lampadaire|floor|sur pied/.test(nm)) return 'floor-lamp';
+    if (/suspension|plafonnier|lustre|ceiling|pendant/.test(nm)) return 'ceiling-light';
+    if (/applique|sconce|murale/.test(nm)) return 'wall-sconce-round';
+    if (/spot|rail|track/.test(nm)) return 'track-light';
+    if (/bureau|desk/.test(nm)) return 'desk-lamp';
+    if (/guirlande|string|no[eë]l|christmas/.test(nm)) return 'string-lights';
+    if (/ruban|bande|led|strip/.test(nm)) return 'led-strip-variant';
+    if (/lampe|lamp/.test(nm)) return 'lamp';
+    return 'lightbulb';
+  }
+
   F.entityIcon = function (id, e) {
     var d = F.domain(id);
     var s = e ? e.s : '';
     var dc = e && e.at ? e.at.device_class : null;
-    if (e && e.i && F.hasIcon(e.i) && !(d === 'lock' || d === 'cover' || d === 'binary_sensor')) return e.i;
+    var nm = String((e && (e.fn || e.n)) || id).toLowerCase();
+    if (e && e.i && F.hasIcon(e.i) && !(d === 'lock' || d === 'cover' || d === 'binary_sensor' || d === 'light')) return e.i;
     switch (d) {
-      case 'light': return s === 'on' ? 'lightbulb-on' : 'lightbulb-outline';
-      case 'switch': {
-        var nm = String((e && (e.fn || e.n)) || id).toLowerCase();
-        if (/guirlande|string|no[eë]l|christmas|led/.test(nm)) return 'string-lights';
-        if (/lampe|lumi|light|lamp|applique|spot|plafonnier|suspension/.test(nm)) return s === 'on' ? 'lightbulb-on' : 'lightbulb-outline';
-        if (/ventil|fan/.test(nm)) return s === 'on' ? 'fan' : 'fan-off';
+      case 'light': return lightGlyph(nm);
+      case 'switch':
+        if (/guirlande|string|no[eë]l|christmas/.test(nm)) return 'string-lights';
+        if (/lampe|lumi|light|lamp|applique|spot|plafonnier|suspension|led/.test(nm)) return lightGlyph(nm);
+        if (/ventil|fan/.test(nm)) return 'fan';
         if (/t[ée]l[ée]|tv|television/.test(nm)) return 'television';
         if (/caf[ée]|coffee/.test(nm)) return 'coffee';
-        return dc === 'outlet' ? 'power-socket-eu' : (s === 'on' ? 'toggle-switch-variant' : 'toggle-switch-variant-off');
-      }
-      case 'fan': return s === 'on' ? 'fan' : 'fan-off';
+        return dc === 'outlet' ? 'power-socket-eu' : 'power-plug';
+      case 'fan': return 'fan';
       case 'cover':
-        if (dc === 'garage') return s === 'closed' ? 'garage' : 'garage-open';
+        if (dc === 'garage') return s === 'closed' ? 'garage-variant' : 'garage-open-variant';
         if (dc === 'gate') return s === 'closed' ? 'gate' : 'gate-open';
         if (dc === 'door') return s === 'closed' ? 'door-closed' : 'door-open';
-        if (dc === 'blind' || dc === 'curtain') return s === 'closed' ? 'blinds' : 'blinds-open';
+        if (dc === 'blind' || dc === 'curtain' || dc === 'shade') return s === 'closed' ? 'blinds-horizontal-closed' : 'blinds-horizontal';
         return s === 'closed' ? 'window-shutter' : 'window-shutter-open';
       case 'lock': return s === 'locked' ? 'lock' : 'lock-open-variant';
       case 'climate': return 'thermostat';
-      case 'media_player': return 'speaker';
+      case 'media_player':
+        if (dc === 'tv' || /\btv\b/i.test((e && e.at && e.at.model) || '') || /t[ée]l[ée]|\btv\b/.test(nm)) return 'television';
+        return 'speaker';
       case 'scene': return e && e.i && F.hasIcon(e.i) ? e.i : 'creation';
       case 'script': return 'script-text';
-      case 'input_boolean': return s === 'on' ? 'toggle-switch-variant' : 'toggle-switch-variant-off';
-      case 'alarm_control_panel': return s === 'disarmed' ? 'shield-off-outline' : (s === 'armed_night' ? 'shield-moon' : 'shield-home');
+      case 'input_boolean': return s === 'on' ? 'toggle-switch' : 'toggle-switch-off';
+      case 'alarm_control_panel': return s === 'disarmed' ? 'shield-off' : (s === 'armed_night' ? 'shield-moon' : 'shield-home');
       case 'binary_sensor':
         if (dc === 'door') return s === 'on' ? 'door-open' : 'door-closed';
         if (dc === 'garage_door') return s === 'on' ? 'garage-open' : 'garage';

@@ -31,6 +31,10 @@ test('ordinary actions are passed on with checked fields only', () => {
   ]);
   assert.deepStrictEqual(run({ entity_id: 'climate.salon', service: 'set_hvac_mode', data: { hvac_mode: 'heat' } })[0].data, { hvac_mode: 'heat' });
   assert.deepStrictEqual(run({ entity_id: 'media_player.salon', service: 'volume_set', data: { volume_level: 0.33333 } })[0].data, { volume_level: 0.333 });
+  // Playing something on a speaker: only the media itself is passed on (no announce, no extra options).
+  const play = { media_content_id: 'radio:1', media_content_type: 'audio/mpeg', extra: { announce: true }, announce: true };
+  assert.deepStrictEqual(run({ entity_id: 'media_player.salon', service: 'play_media', data: play })[0].data,
+    { media_content_id: 'radio:1', media_content_type: 'audio/mpeg' });
 });
 
 test('anything that changes Home Assistant itself is refused', () => {

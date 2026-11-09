@@ -7,6 +7,7 @@
   var pollBackoff = 1000;
   var polling = false;
   var pollXhr = null;
+  var aborting = false;
 
   F.onChange = function (fn) { listeners.push(fn); };
 
@@ -95,8 +96,16 @@
 
   function poll() {
     polling = true;
-    pollXhr = F.xhr('GET', 'api/poll?v=' + S.v + '&e=' + encodeURIComponent(S.epoch || ''), null, function (status, data) {
+    // After a failure, ask for an immediate answer: the screen knows at once that it is back online.
+    var quick = S.online ? '' : '&wait=0';
+    pollXhr = F.xhr('GET', 'api/poll?v=' + S.v + '&e=' + encodeURIComponent(S.epoch || '') + quick, null, function (status, data) {
       pollXhr = null;
+      if (aborting) {
+        // Stopped on purpose (the iPad woke up): ask again right away.
+        aborting = false;
+        poll();
+        return;
+      }
       if (status === 200 && data) {
         setOnline(true);
         pollBackoff = 1000;
@@ -116,13 +125,22 @@
       }
     }, 45000);
   }
+  /** Uses a block right away (the server sends it to every screen too). */
+  F.setBlock = function (name, value) {
+    S.blocks[name] = value;
+    var b = {};
+    b[name] = true;
+    emit(null, b, false);
+  };
+
   F.startPolling = function () {
     if (!polling) poll();
   };
   /** After the iPad wakes up, do not wait for a stale request. */
   F.repoll = function () {
     if (pollXhr) {
-      try { pollXhr.abort(); } catch (e) { /* ignore */ }
+      aborting = true;
+      try { pollXhr.abort(); } catch (e) { aborting = false; }
     }
   };
 

@@ -63,7 +63,8 @@
     var g = w.FOYER_LAYOUT.gridFor(f.id, f.landscape);
     var cols = g[0];
     var rows = g[1];
-    var placed = w.FOYER_LAYOUT.place(specs, cols, rows);
+    var key = w.FOYER_LAYOUT.keyFor(f.landscape);
+    var placed = w.FOYER_LAYOUT.place(specs, cols, rows, key);
     var top = F.safeTop || 0;
     var pad = Math.round(F.clamp(Math.min(f.w, f.h) * 0.026, 10, 28));
     var gap = Math.round(pad * 0.72);
@@ -75,10 +76,11 @@
       var p = placed[j];
       boxes[p.index] = {
         x: pad + p.x * (cw + gap), y: top + pad + p.y * (ch + gap),
-        w: p.w * cw + (p.w - 1) * gap, h: p.h * ch + (p.h - 1) * gap
+        w: p.w * cw + (p.w - 1) * gap, h: p.h * ch + (p.h - 1) * gap,
+        col: p.x, row: p.y, cs: p.w, rs: p.h
       };
     }
-    return { boxes: boxes, cols: cols, rows: rows, cw: cw, ch: ch, gap: gap, pad: pad, top: top };
+    return { boxes: boxes, cols: cols, rows: rows, cw: cw, ch: ch, gap: gap, pad: pad, top: top, key: key };
   };
 
   /** The big dial of the wallpaper sits behind the clock (or the first tile). */

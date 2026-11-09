@@ -82,6 +82,8 @@ const SCENES = {
   'scene.cinema': [['light.lampadaire_salon', 'on', { brightness: 40 }], ['light.spots_salon', 'off', {}]],
 };
 
+const DEMO_RADIOS = ['Radio des Tilleuls', 'Jazz du soir', 'Classique douce', 'Infos locales'];
+const DEMO_PLAYLISTS = ['Dimanche matin', 'En cuisine', 'Soirée calme', 'Concentration'];
 const TRACKS = [["Lumière d'octobre", 'Les Pins Bleus'], ['Sel et cendre', 'Odile Marchal'], ['Petit matin', 'Trio Calanque'], ['Vent du large', 'Les Pins Bleus']];
 
 /**
@@ -109,6 +111,11 @@ class DemoSource extends EventEmitter {
     this.stateCb = null;
     this.forecastCbs = [];
     this.track = 0;
+    this.extraEvents = [];
+    this.lists = {
+      'todo.courses': [['Pain de campagne', 'needs_action'], ['Lait', 'needs_action'], ['Pommes', 'needs_action'], ['Café', 'needs_action'], ['Piles', 'completed']]
+        .map(([summary, status], i) => ({ summary, status, uid: `c${i}` })),
+    };
   }
 
   start() {
@@ -200,6 +207,11 @@ class DemoSource extends EventEmitter {
   }
 
   getCalendarEvents(entityId) {
+    const extra = this.extraEvents.filter((x) => x.cal === entityId).map((x) => x.ev);
+    return this._calendar(entityId).then((list) => list.concat(extra));
+  }
+
+  _calendar(entityId) {
     const ev = (title, d, h1, m1, h2, m2, location) => ({
       summary: title, start: { dateTime: iso(atToday(h1, m1, d)) }, end: { dateTime: iso(atToday(h2, m2, d)) }, location,
     });
@@ -220,11 +232,16 @@ class DemoSource extends EventEmitter {
     ]);
   }
 
-  getTodoItems() {
-    return Promise.resolve([
-      { summary: 'Pain de campagne', status: 'needs_action' }, { summary: 'Lait', status: 'needs_action' },
-      { summary: 'Pommes', status: 'needs_action' }, { summary: 'Café', status: 'needs_action' }, { summary: 'Piles', status: 'completed' },
-    ]);
+  getTodoItems(entityId) {
+    return Promise.resolve((this.lists[entityId] || []).map((i) => ({ ...i })));
+  }
+
+  browseMedia(entityId, id) {
+    const dir = (title, mid, children) => ({ title, media_class: 'directory', media_content_id: mid, media_content_type: 'directory', can_expand: true, can_play: false, children });
+    const item = (title, mid, type) => ({ title, media_class: 'music', media_content_id: mid, media_content_type: type, can_play: true, can_expand: false });
+    if (id === 'radios') return Promise.resolve(dir('Radios', 'radios', DEMO_RADIOS.map((t, i) => item(t, `radio:${i}`, 'audio/mpeg'))));
+    if (id === 'playlists') return Promise.resolve(dir('Playlists', 'playlists', DEMO_PLAYLISTS.map((t, i) => item(t, `playlist:${i}`, 'playlist'))));
+    return Promise.resolve(dir('Musique', 'root', [dir('Radios', 'radios'), dir('Playlists', 'playlists')]));
   }
 
   _set(id, state, attrs) {
@@ -292,12 +309,32 @@ class DemoSource extends EventEmitter {
           return this._set(id, 'playing', { media_title: title, media_artist: artist, media_position: 0, media_position_updated_at: iso(Date.now()) });
         }
         if (service === 'volume_set') return this._set(id, st.state, { volume_level: data.volume_level });
+        if (service === 'play_media') {
+          const m = /^(radio|playlist):(\d+)$/.exec(data.media_content_id || '');
+          const title = m ? (m[1] === 'radio' ? DEMO_RADIOS : DEMO_PLAYLISTS)[Number(m[2])] : data.media_content_id;
+          return this._set(id, 'playing', { media_title: title, media_artist: m && m[1] === 'radio' ? 'Radio' : 'Playlist', media_position: 0 });
+        }
         if (service === 'volume_mute') return this._set(id, st.state, { is_volume_muted: data.is_volume_muted });
         return undefined;
       }
       case 'scene':
         for (const [eid, state, attrs] of SCENES[id] || []) this._set(eid, state, attrs);
         return undefined;
+      case 'calendar':
+        if (service === 'create_event') {
+          const start = data.start_date_time ? { dateTime: data.start_date_time } : { date: data.start_date };
+          const end = data.end_date_time ? { dateTime: data.end_date_time } : { date: data.end_date };
+          this.extraEvents.push({ cal: id, ev: { summary: data.summary, start, end, location: data.location } });
+        }
+        return undefined;
+      case 'todo': {
+        const list = this.lists[id] || (this.lists[id] = []);
+        if (service === 'add_item') list.push({ summary: data.item, status: 'needs_action', uid: `n${Date.now()}` });
+        const found = list.find((x) => x.uid === data.item || x.summary === data.item);
+        if (service === 'update_item' && found && data.status) found.status = data.status;
+        if (service === 'remove_item' && found) list.splice(list.indexOf(found), 1);
+        return this._set(id, String(list.filter((x) => x.status !== 'completed').length), {});
+      }
       case 'alarm_control_panel': {
         const map = { alarm_arm_home: 'armed_home', alarm_arm_away: 'armed_away', alarm_arm_night: 'armed_night', alarm_disarm: 'disarmed' };
         return this._set(id, map[service] || st.state, {});

@@ -175,9 +175,11 @@
     var ax = Math.abs(g.dx);
     var ay = Math.abs(g.dy);
     if (!g.mode) {
+      var draggable = Boolean(g.tile && g.tile.T.canDrag && g.tile.T.canDrag(g.tile));
       if (ax > 12 && ax > ay) g.mode = 'swipe';
       else if (ay > 12 && ay > ax) {
-        if (g.tile && g.tile.T.canDrag && g.tile.T.canDrag(g.tile)) {
+        if (g.dy < 0 && !draggable && g.y > P.H - Math.max(110, P.H * 0.16)) g.mode = 'apps';
+        else if (draggable) {
           g.mode = 'drag';
           g.tile.T.dragStart(g.tile);
         } else if (g.y < Math.max(90, P.H * 0.14) && g.dy > 0) g.mode = 'cc';
@@ -199,6 +201,13 @@
       if (ev) ev.preventDefault();
     } else if (g.mode === 'cc') {
       CC.pull(g.dy);
+      if (ev) ev.preventDefault();
+    } else if (g.mode === 'apps') {
+      // Swipe up from the bottom of a face: the apps, like the iPad's home screen.
+      if (!g.appsShown && g.dy < -50) {
+        g.appsShown = true;
+        F.apps.show();
+      }
       if (ev) ev.preventDefault();
     }
   }
@@ -278,6 +287,15 @@
       gEnd(ev);
     }, false);
     doc.addEventListener('keydown', function (ev) {
+      if (F.settingsUI.isOpen) {
+        if (ev.keyCode === 27 && !F.sheetOpen()) F.settingsUI.hide();
+        else if (ev.keyCode === 27) F.closeSheets();
+        return;
+      }
+      if (F.apps.isOpen) {
+        if (ev.keyCode === 27) F.apps.hide();
+        return;
+      }
       if (F.sheetOpen()) {
         if (ev.keyCode === 27) F.closeSheets();
         return;
@@ -360,7 +378,12 @@
       var nf = s.night && s.night.face;
       if (nf && P.find(nf) >= 0 && P.current() && P.current().id !== nf && !F.sheetOpen()) P.goTo(nf);
     }
-    if (!night && s.returnAfter > 0 && nowMs - lastActivity > s.returnAfter * 1000 && !F.sheetOpen() && !CC.open) {
+    if ((F.settingsUI.isOpen || F.apps.isOpen) && nowMs - lastActivity > Math.max(300, s.returnAfter || 0) * 1000) {
+      F.settingsUI.hide();
+      F.apps.hide();
+      F.closeSheets();
+    }
+    if (!night && s.returnAfter > 0 && nowMs - lastActivity > s.returnAfter * 1000 && !F.sheetOpen() && !CC.open && !F.settingsUI.isOpen) {
       var cur = P.current();
       if (cur && cur.id !== s.startFace && P.find(s.startFace) >= 0) P.goTo(s.startFace);
       lastActivity = nowMs;
@@ -452,8 +475,15 @@
         F.edit.enter(P.current());
       });
     }
-    if (sess.admin) F.button(sys, F.t('settings'), 'cog', 'cc-sysbtn', function () { w.location.href = 'settings'; });
-    if (sess.kind === 'ingress') F.button(sys, F.t('full_screen'), 'tablet', 'cc-sysbtn', fullScreenHere);
+    F.button(sys, 'Apps', 'apps', 'cc-sysbtn', function () {
+      CC.hide();
+      F.apps.show();
+    });
+    F.button(sys, F.t('settings'), 'cog', 'cc-sysbtn', function () {
+      CC.hide();
+      F.settingsUI.show();
+    });
+    if (sess.kind === 'ingress' && sess.admin) F.button(sys, F.t('full_screen'), 'tablet', 'cc-sysbtn', fullScreenHere);
     F.button(sys, F.t('refresh'), 'refresh', 'cc-sysbtn', function () { w.location.reload(); });
   };
   CC.show = function () {
@@ -488,6 +518,23 @@
     if (dy > 90) CC.show();
     else CC.hide();
   };
+
+  /** Home Assistant itself: the same tab inside Home Assistant, a new one on a screen paired by its own port. */
+  F.openHomeAssistant = function () {
+    var sess = F.store.session || {};
+    if (sess.kind === 'ingress') {
+      try {
+        w.top.location.href = '/';
+        return;
+      } catch (e) { /* not the same origin */ }
+    }
+    var st = F.block('status') || {};
+    var url = st.url || (w.location.protocol + '//' + w.location.hostname + ':8123/');
+    var win = null;
+    try { win = w.open(url, '_blank'); } catch (e2) { win = null; }
+    if (!win) w.location.href = url;
+  };
+  F.fullScreenHere = function () { fullScreenHere(); };
 
   function fullScreenHere() {
     var win = null;
@@ -650,13 +697,27 @@
       }
     }, 250);
     nightCheck();
-    F.startPolling();
+    if (F.query('nopoll') !== '1') F.startPolling();
     if (F.store.session && F.store.session.kind === 'ingress') {
       var hint = F.el('div', 'corner-btn', doc.body);
       F.icon('cog', '', hint);
       F.onTap(hint, function () { CC.show(); });
     }
     w.setTimeout(function () { F.cls(doc.body, 'ready', true); }, 50);
+    if (F.query('settings') === '1') {
+      F.settingsUI.show(F.query('page') || null);
+      if (w.history && w.history.replaceState) {
+        try { w.history.replaceState(null, '', w.location.pathname); } catch (e) { /* ignore */ }
+      }
+    }
+    if (F.query('apps') === '1') F.apps.show();
+  }
+
+  function addManifest() {
+    var l = doc.createElement('link');
+    l.rel = 'manifest';
+    l.href = 'manifest.webmanifest?start=' + encodeURIComponent(w.location.pathname);
+    doc.head.appendChild(l);
   }
 
   function boot() {
@@ -664,6 +725,7 @@
     measureSafeTop();
     F.loadSession(function (session) {
       F.lang = (session.ha && session.ha.lang) || 'fr';
+      if (session.kind !== 'ingress') addManifest();
       if (!session.paired) {
         showPairing();
         return;

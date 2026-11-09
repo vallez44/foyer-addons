@@ -16,6 +16,7 @@ const BINARY_CLASSES = new Set([
   'lock', 'carbon_monoxide', 'vibration', 'sound',
 ]);
 
+const HIDE_LABELS = new Set(['masquer_dans_foyer', 'hide_in_foyer']);
 const COMMON_ATTRS = ['device_class', 'unit_of_measurement', 'supported_features'];
 const ATTRS = {
   light: ['brightness', 'color_mode', 'supported_color_modes', 'color_temp_kelvin', 'min_color_temp_kelvin', 'max_color_temp_kelvin', 'rgb_color', 'hs_color'],
@@ -172,6 +173,8 @@ class Home extends EventEmitter {
         disabled: Boolean(e.disabled_by),
         category: e.entity_category || null,
         icon: e.icon || null,
+        // The "Masquer dans Foyer" / "Hide in Foyer" label keeps an entity off the iPads.
+        skip: Array.isArray(e.labels) && e.labels.some((l) => HIDE_LABELS.has(l)),
       });
     }
     if (notify) {
@@ -206,7 +209,7 @@ class Home extends EventEmitter {
     const domain = id.split('.')[0];
     if (!DOMAINS.has(domain)) return false;
     const reg = this.entityReg.get(id);
-    if (reg && (reg.hidden || reg.disabled || reg.category)) return false;
+    if (reg && (reg.hidden || reg.disabled || reg.category || reg.skip)) return false;
     const st = this.states.get(id);
     if (!st) return false;
     const dc = st.attributes && st.attributes.device_class;
@@ -261,6 +264,8 @@ class Home extends EventEmitter {
     if (domain === 'media_player' && src.entity_picture) at.pic = `api/art/${id}?c=${shortHash(src.entity_picture)}`;
     if (domain === 'camera') at.pic = `api/camera/${id}`;
     const reg = this.entityReg.get(id);
+    const dev = reg && reg.device ? this.deviceReg.get(reg.device) : null;
+    if (domain === 'media_player' && dev && dev.model) at.model = dev.model;
     return {
       s: st.state,
       n: this.displayName(id, st),
@@ -285,6 +290,12 @@ class Home extends EventEmitter {
       lang: (c.language || 'fr').slice(0, 2),
       tz: c.time_zone || null,
       units: (c.unit_system && c.unit_system.temperature) || '°C',
+      // Where Home Assistant's own page lives (Settings → Home Assistant → Open).
+      url: typeof c.internal_url === 'string' && /^https?:\/\//.test(c.internal_url) ? c.internal_url : null,
+      caps: {
+        musicAssistant: Array.isArray(c.components) && c.components.includes('music_assistant'),
+        radio: Array.isArray(c.components) && c.components.includes('radio_browser'),
+      },
       connected: this.ready,
       error: this.lastError,
     };
@@ -402,7 +413,7 @@ class Home extends EventEmitter {
 
   _trimTodo(items) {
     const open = items.filter((i) => i.status !== 'completed').slice(0, 30)
-      .map((i) => ({ t: i.summary, due: i.due || null }));
+      .map((i) => ({ t: i.summary, due: i.due || null, uid: i.uid || null }));
     return { open, done: items.filter((i) => i.status === 'completed').length };
   }
 

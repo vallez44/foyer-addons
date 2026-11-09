@@ -139,3 +139,65 @@ test('add-on: requests from the ingress proxy are Home Assistant users; pictures
   assert.match(page.headers['content-security-policy'], /script-src 'self'/);
   assert.strictEqual(page.headers['content-encoding'], undefined, 'no compression through ingress');
 });
+
+test('screens: their own preferences, music on the speakers, calendar and reminders, an installable page', async (t) => {
+  const { app, port } = await startApp({ mode: 'standalone', isAddon: false });
+  t.after(() => app.stop());
+  const H = { 'X-Foyer': '1' };
+  const first = await request(port, 'POST', '/api/pair', { body: { code: app.pairing.createCode('log').display }, headers: H });
+  const admin = first.headers['set-cookie'][0].split(';')[0];
+  const second = await request(port, 'POST', '/api/pair', { body: { code: app.pairing.createCode('setup').code }, headers: H });
+  const cookie = second.headers['set-cookie'][0].split(';')[0];
+
+  // Settings inside the dashboard: any screen changes the screen preferences, only the admin changes security.
+  const prefs = {
+    wallpaper: 'lavender', defaultCalendar: 'calendar.travail', sensitiveFromHaOnly: true,
+    apps: { apple: { music: true, calendar: true, bogus: true }, hidden: { podcasts: true } },
+  };
+  const put = await request(port, 'PUT', '/api/prefs', { body: prefs, headers: H, cookie });
+  assert.strictEqual(put.status, 200);
+  assert.strictEqual(put.json.settings.wallpaper, 'lavender');
+  assert.strictEqual(put.json.settings.defaultCalendar, 'calendar.travail');
+  assert.deepStrictEqual(put.json.settings.apps, { apple: { music: true, calendar: true }, hidden: { podcasts: true } });
+  assert.strictEqual(put.json.settings.sensitiveFromHaOnly, false, 'security stays with Home Assistant and the first screen');
+  assert.strictEqual(app.home.extraBlocks.settings.wallpaper, 'lavender', 'every screen gets it');
+  const byAdmin = await request(port, 'PUT', '/api/prefs', { body: { sensitiveFromHaOnly: true }, headers: H, cookie: admin });
+  assert.strictEqual(byAdmin.json.settings.sensitiveFromHaOnly, true);
+  assert.strictEqual((await request(port, 'PUT', '/api/prefs', { body: { wallpaper: 'ocean' }, cookie })).status, 403, 'the Foyer header is required');
+
+  // Music: what a speaker can play, then playing it there.
+  const root = await request(port, 'GET', '/api/browse?entity_id=media_player.enceinte_salon', { cookie });
+  assert.strictEqual(root.status, 200);
+  const folder = root.json.children.find((c) => c.open);
+  const inside = await request(port, 'GET', `/api/browse?entity_id=media_player.enceinte_salon&id=${encodeURIComponent(folder.id)}&type=${encodeURIComponent(folder.type)}`, { cookie });
+  const item = inside.json.children.find((c) => c.play);
+  assert.ok(item, 'something to play');
+  const play = { entity_id: 'media_player.enceinte_salon', service: 'play_media', data: { media_content_id: item.id, media_content_type: item.type } };
+  assert.strictEqual((await request(port, 'POST', '/api/action', { body: play, headers: H, cookie })).status, 200);
+  await until(() => app.home.states.get('media_player.enceinte_salon').attributes.media_title === item.title, 2000);
+  assert.strictEqual((await request(port, 'GET', '/api/browse?entity_id=light.chevet', { cookie })).status, 404, 'only speakers');
+  const odd = { ...play, data: { media_content_id: { url: 'x' }, media_content_type: 'music' } };
+  assert.strictEqual((await request(port, 'POST', '/api/action', { body: odd, headers: H, cookie })).status, 400, 'fields are checked');
+
+  // A new calendar event and a reminder.
+  const ev = { summary: 'Dîner chez Léa', start_date_time: '2026-11-12T19:30:00', end_date_time: '2026-11-12T21:30:00', location: 'Nantes' };
+  assert.strictEqual((await request(port, 'POST', '/api/action', { body: { entity_id: 'calendar.famille', service: 'create_event', data: ev }, headers: H, cookie })).status, 200);
+  const badEv = { entity_id: 'calendar.famille', service: 'create_event', data: { summary: 'x', start_date_time: 'tomorrow' } };
+  assert.strictEqual((await request(port, 'POST', '/api/action', { body: badEv, headers: H, cookie })).status, 400);
+  const add = { entity_id: 'todo.courses', service: 'add_item', data: { item: 'Farine' } };
+  assert.strictEqual((await request(port, 'POST', '/api/action', { body: add, headers: H, cookie })).status, 200);
+  const removeAll = { entity_id: 'todo.courses', service: 'remove_completed_items', data: {} };
+  assert.strictEqual((await request(port, 'POST', '/api/action', { body: removeAll, headers: H, cookie })).status, 403);
+
+  // Settings live in the dashboard now; Android's Chrome can install the page like an app.
+  const old = await request(port, 'GET', '/settings', { cookie });
+  assert.strictEqual(old.status, 302);
+  assert.strictEqual(old.headers.location, './?settings=1');
+  const man = await request(port, 'GET', '/manifest.webmanifest?start=%2F');
+  assert.strictEqual(man.status, 200);
+  assert.strictEqual(man.json.start_url, '/');
+  assert.strictEqual(man.json.display, 'standalone');
+  const evil = await request(port, 'GET', `/manifest.webmanifest?start=${encodeURIComponent('//evil.example.com/')}`);
+  assert.strictEqual(evil.json.start_url, './', 'start stays on this server');
+  for (const icon of man.json.icons) assert.strictEqual((await request(port, 'GET', `/${icon.src}`)).status, 200);
+});
