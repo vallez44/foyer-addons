@@ -80,6 +80,9 @@ class HAConnection extends EventEmitter {
     if (wasConnected) {
       this.log.warn('Lost the connection to Home Assistant, reconnecting.');
       this.emit('disconnected');
+    } else if (!this.warnedUnreachable && !this.authFailed) {
+      this.warnedUnreachable = true;
+      this.log.warn(`Cannot reach Home Assistant at ${this.wsUrl}, retrying.`);
     }
     this._scheduleReconnect();
   }
@@ -103,6 +106,7 @@ class HAConnection extends EventEmitter {
       case 'auth_ok':
         this.connected = true;
         this.authFailed = false;
+        this.warnedUnreachable = false;
         this.backoff = 1000;
         this.haVersion = m.ha_version || null;
         this._startPing();

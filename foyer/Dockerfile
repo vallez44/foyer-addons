@@ -1,5 +1,7 @@
-ARG BUILD_FROM=node:22-alpine
-FROM ${BUILD_FROM}
+# Foyer runs on the official Node.js image and is started directly by Docker's init.
+# The image is fixed here on purpose: Home Assistant's own base image (s6-overlay, no Node.js)
+# must never be used for this add-on.
+FROM docker.io/library/node:22-alpine
 
 ENV NODE_ENV=production
 WORKDIR /app

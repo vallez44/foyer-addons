@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Correction : l'add-on s'arrêtait au démarrage (« s6-overlay-suexec: fatal: can only run as pid 1 »).
+  L'image était construite sur l'image de base de Home Assistant au lieu de l'image Node.js officielle ;
+  elle est désormais fixée dans le Dockerfile.
+
 ## 0.1.0
 
 Première version.
