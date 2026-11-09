@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+- **Disposer les tuiles directement sur l'écran** : maintenez une tuile (ou Centre de contrôle → Modifier la
+  disposition), puis glissez pour déplacer, touchez pour choisir la taille (S, W, M, L) ou changer ce qu'elle montre (⇄),
+  « − » pour retirer, « + » pour ajouter, Personnaliser pour le fond d'écran, OK pour enregistrer pour tous les écrans.
+- Un déplacement ou un agrandissement qui ferait sortir une tuile de l'écran est refusé.
+- Les écrans associés peuvent enregistrer la disposition ; les scripts et boutons restent réservés à Home Assistant.
+- Les tuiles qui ne tenaient pas sur l'écran sont retirées de la disposition quand vous la modifiez.
+
 ## 0.1.1
 
 - Correction : l'add-on s'arrêtait au démarrage (« s6-overlay-suexec: fatal: can only run as pid 1 »).

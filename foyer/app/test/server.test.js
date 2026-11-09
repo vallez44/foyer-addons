@@ -98,6 +98,19 @@ test('standalone: screens pair with a code, everything else needs the device coo
   const no = await request(port, 'POST', '/api/action', { body: { entity_id: 'light.chevet', service: 'set_config' }, headers: H, cookie: cookie2 });
   assert.strictEqual(no.status, 403);
 
+  // Any screen can arrange the tiles on the screen itself; only the admin can put a script or a button on a face.
+  const tiles = [{ type: 'clock', size: 'M' }, { type: 'entity', entity: 'light.chevet', size: 'W' }, { type: 'entity', entity: 'script.reboot', size: 'S' }];
+  const arranged = await request(port, 'PUT', '/api/arrange', { body: { face: 'home', tiles }, headers: H, cookie: cookie2 });
+  assert.strictEqual(arranged.status, 200);
+  assert.deepStrictEqual(arranged.json.tiles.map((x) => `${x.type}:${x.entity || ''}:${x.size}`), ['clock::M', 'entity:light.chevet:W']);
+  assert.strictEqual(app.home.extraBlocks.layout.auto.home, false, 'every screen gets the new layout');
+  const byAdmin = await request(port, 'PUT', '/api/arrange', { body: { face: 'home', tiles }, headers: H, cookie });
+  assert.strictEqual(byAdmin.json.tiles.length, 3);
+  assert.strictEqual((await request(port, 'PUT', '/api/arrange', { body: { face: 'photos', tiles }, headers: H, cookie: cookie2 })).status, 400);
+  const back = await request(port, 'PUT', '/api/arrange', { body: { face: 'home', tiles: null, wallpaper: 'sage' }, headers: H, cookie: cookie2 });
+  assert.strictEqual(back.json.auto, true, 'back to the suggested layout');
+  assert.strictEqual(back.json.wallpaper, 'sage');
+
   // Removing a screen stops it at once.
   const dev2 = app.pairing.list().find((d) => !d.admin);
   assert.strictEqual((await request(port, 'DELETE', `/api/admin/devices/${dev2.id}`, { headers: H, cookie })).status, 200);

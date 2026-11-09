@@ -16,7 +16,7 @@ const { DemoSource, photoSvg } = require('./lib/demo');
 const { Home } = require('./lib/home');
 const { Photos } = require('./lib/photos');
 const { suggestLayouts } = require('./lib/suggest');
-const { resolveAction, PolicyError } = require('./lib/policy');
+const { resolveAction, PolicyError, LAYOUT_ONLY } = require('./lib/policy');
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -318,6 +318,39 @@ function createApp(cfg, deps = {}) {
 
     if (p === '/api/snapshot' && m === 'GET') {
       return sendJson(req, res, 200, { ...home.snapshot(), session: sessionInfo(ctx) });
+    }
+
+    if (p === '/api/arrange' && m === 'PUT') {
+      // Any screen of the home may arrange the tile faces from the screen itself (one layout for all screens).
+      // Scripts and buttons can run anything: only Home Assistant (or the standalone admin) may add them.
+      const body = await readBody(req, 64 * 1024);
+      const patch = {};
+      const face = body.face;
+      if (face !== undefined) {
+        if (face !== 'home_plus' && face !== 'home') return sendJson(req, res, 400, { error: 'unknown face' });
+        if (body.tiles === null) {
+          patch.layouts = { [face]: null };
+        } else if (Array.isArray(body.tiles)) {
+          let tiles = body.tiles;
+          if (!ctx.admin) {
+            const current = computeLayouts().tiles;
+            const placedBefore = new Set();
+            for (const f of Object.keys(current)) for (const t of current[f]) if (t.entity) placedBefore.add(t.entity);
+            tiles = tiles.filter((t) => !(t && typeof t.entity === 'string'
+              && LAYOUT_ONLY.has(t.entity.split('.')[0]) && !placedBefore.has(t.entity)));
+          }
+          patch.layouts = { [face]: tiles };
+        } else {
+          return sendJson(req, res, 400, { error: 'bad tiles' });
+        }
+      }
+      if (typeof body.wallpaper === 'string') patch.wallpaper = body.wallpaper;
+      const prev = store.settings;
+      const next = sanitizeSettings(patch, prev);
+      store.setSettings(next);
+      applySettings(prev);
+      const tiles = face ? computeLayouts().tiles[face] : null;
+      return sendJson(req, res, 200, { ok: true, tiles, auto: face ? !Array.isArray(next.layouts[face]) : null, wallpaper: next.wallpaper });
     }
 
     if (p === '/api/poll' && m === 'GET') {

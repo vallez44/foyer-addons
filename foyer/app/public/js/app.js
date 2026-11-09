@@ -25,6 +25,7 @@
   var P = F.pager = { faces: [], index: 0, ids: '' };
 
   P.build = function () {
+    if (F.edit && F.edit.active) return;
     var s = F.settings();
     var ids = [];
     var list = s.faces || [];
@@ -127,26 +128,48 @@
   var G = null;
   function gStart(x, y, target, isTouch) {
     activity();
+    if (F.edit.active) {
+      // Arranging tiles: every touch goes to the editor.
+      G = { edit: true, touch: isTouch, mode: 'edit' };
+      F.edit.down(x, y, target);
+      return;
+    }
     var tileEl = findUp(target, 'foyerTile');
     var tapEl = findUp(target, 'foyerTap');
-    G = { x: x, y: y, t: F.now(), mode: null, tile: tileEl ? tileEl.foyerTile : null, tapEl: tapEl, dx: 0, dy: 0, touch: isTouch };
+    G = { x: x, y: y, lx: x, ly: y, t: F.now(), mode: null, tile: tileEl ? tileEl.foyerTile : null, tapEl: tapEl, dx: 0, dy: 0, touch: isTouch, target: target };
     var g = G;
+    var arrange = Boolean(g.tile && F.edit.canEdit(g.tile.face));
     g.pressTimer = w.setTimeout(function () {
       if (G === g && g.tile) F.cls(g.tile.el, 'pressed', true);
     }, 70);
     g.longTimer = w.setTimeout(function () {
       if (G !== g || g.mode) return;
-      if (g.tile && g.tile.T.press) {
+      if (arrange) {
+        // Hold a tile: the tiles start to wiggle; keep the finger down to drag it right away.
+        F.cls(g.tile.el, 'pressed', false);
+        if (F.edit.enter(g.tile.face, g.tile)) {
+          g.edit = true;
+          g.mode = 'edit';
+          F.edit.down(g.lx, g.ly, g.target, true);
+        }
+      } else if (g.tile && g.tile.T.press) {
         g.mode = 'press';
         F.cls(g.tile.el, 'pressed', false);
         g.tile.T.press(g.tile);
       }
-    }, 550);
+    }, arrange ? 800 : 550);
   }
 
   function gMove(x, y, ev) {
     var g = G;
     if (!g) return;
+    if (g.edit) {
+      F.edit.move(x, y, ev);
+      if (ev) ev.preventDefault();
+      return;
+    }
+    g.lx = x;
+    g.ly = y;
     g.dx = x - g.x;
     g.dy = y - g.y;
     var ax = Math.abs(g.dx);
@@ -184,6 +207,11 @@
     var g = G;
     G = null;
     if (!g) return;
+    if (g.edit) {
+      F.edit.up();
+      if (ev && g.touch) ev.preventDefault();
+      return;
+    }
     w.clearTimeout(g.longTimer);
     w.clearTimeout(g.pressTimer);
     if (g.tile) F.cls(g.tile.el, 'pressed', false);
@@ -231,6 +259,7 @@
     }, false);
     el.addEventListener('touchend', gEnd, false);
     el.addEventListener('touchcancel', function () {
+      if (G && G.edit) F.edit.up();
       if (G && G.mode === 'swipe') P.setIndex(P.index, true);
       G = null;
     }, false);
@@ -251,6 +280,10 @@
     doc.addEventListener('keydown', function (ev) {
       if (F.sheetOpen()) {
         if (ev.keyCode === 27) F.closeSheets();
+        return;
+      }
+      if (F.edit.active) {
+        if (ev.keyCode === 27 || ev.keyCode === 13) F.edit.finish(true);
         return;
       }
       if (ev.keyCode === 37) P.setIndex(P.index - 1, true);
@@ -287,6 +320,7 @@
   }
 
   function nightCheck() {
+    if (F.edit.active) return;
     var s = F.settings().night;
     var now = new Date();
     var m = now.getHours() * 60 + now.getMinutes();
@@ -317,6 +351,7 @@
   F.onUserActivity = activity;
 
   function idleCheck() {
+    if (F.edit.active) return;
     var s = F.settings();
     var nowMs = F.now();
     if (night && nightLiftUntil && nowMs > nightLiftUntil) {
@@ -411,6 +446,12 @@
     // System row
     var sys = F.el('div', 'cc-sys', p);
     var sess = F.store.session || {};
+    if (F.edit.canEdit(P.current())) {
+      F.button(sys, F.t('edit_layout'), 'pencil', 'cc-sysbtn', function () {
+        CC.hide();
+        F.edit.enter(P.current());
+      });
+    }
     if (sess.admin) F.button(sys, F.t('settings'), 'cog', 'cc-sysbtn', function () { w.location.href = 'settings'; });
     if (sess.kind === 'ingress') F.button(sys, F.t('full_screen'), 'tablet', 'cc-sysbtn', fullScreenHere);
     F.button(sys, F.t('refresh'), 'refresh', 'cc-sysbtn', function () { w.location.reload(); });

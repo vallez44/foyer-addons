@@ -466,3 +466,51 @@ body.pairing { background: #ef7a14; background-image: linear-gradient(152deg, #f
 .pair .kp-ok { background: #fff; color: #c2410c; }
 .pair-arrow { position: fixed; top: 6px; right: 120px; width: 46px; height: 46px; fill: #fff; -webkit-transform: rotate(90deg); transform: rotate(90deg); -webkit-animation: pulse 1.4s infinite; animation: pulse 1.4s infinite; }
 .pair-alt { margin-top: 18px; }
+
+/* ---------------------------------------------------------------- arranging tiles on the screen */
+.face.editing .tile {
+  -webkit-transition: left .3s ease, top .3s ease, width .3s ease, height .3s ease, -webkit-transform .2s ease, box-shadow .2s ease;
+  transition: left .3s ease, top .3s ease, width .3s ease, height .3s ease, transform .2s ease, box-shadow .2s ease;
+  -webkit-animation: wiggle .28s ease-in-out infinite alternate; animation: wiggle .28s ease-in-out infinite alternate;
+}
+.face.edit-instant .tile { -webkit-transition: none !important; transition: none !important; }
+.face.editing .tile.lifted, .face.editing .tile.selected { -webkit-animation: none; animation: none; }
+.face.editing .tile.lifted { z-index: 30; -webkit-transition: box-shadow .2s ease; transition: box-shadow .2s ease; box-shadow: 0 26px 60px rgba(60, 20, 0, .38), inset 0 0 0 1px rgba(255, 255, 255, .25); }
+.face.editing .tile.selected { box-shadow: 0 0 0 3px rgba(255, 255, 255, .95), 0 10px 30px rgba(60, 20, 0, .25); }
+.face.editing .tile.pressed { -webkit-transform: none; transform: none; }
+@-webkit-keyframes wiggle { 0% { -webkit-transform: rotate(-.8deg); } 100% { -webkit-transform: rotate(.8deg); } }
+@keyframes wiggle { 0% { transform: rotate(-.8deg); } 100% { transform: rotate(.8deg); } }
+.edit-layer { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 25; pointer-events: none; }
+.edit-badges, .edit-sizebar, .edit-bar, .edit-hint { pointer-events: auto; }
+.edit-badges { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.edit-badge { position: absolute; width: 30px; height: 30px; border-radius: 15px; background: #fff; box-shadow: 0 2px 10px rgba(0, 0, 0, .28); z-index: 26; }
+.edit-badge:after { content: ""; position: absolute; left: 8px; right: 8px; top: 13px; height: 4px; border-radius: 2px; background: #1c1c1e; }
+.edit-badge.pressed { -webkit-transform: scale(.9); transform: scale(.9); }
+.edit-sizebar { position: absolute; display: none; white-space: nowrap; padding: 5px; border-radius: 28px; background: rgba(70, 35, 10, .58); -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%); box-shadow: 0 8px 26px rgba(0, 0, 0, .25), inset 0 0 0 1px rgba(255, 255, 255, .14); z-index: 40; }
+.classic .edit-sizebar { background: rgba(70, 35, 10, .88); }
+.edit-size { display: inline-block; vertical-align: middle; width: 44px; height: 44px; line-height: 44px; margin: 0 2px; border-radius: 22px; text-align: center; color: #fff; font-weight: 700; font-size: 18px; background: rgba(255, 255, 255, .16); }
+.edit-size.sel { background: #fff; color: #1c1c1e; }
+.edit-size.pressed { opacity: .6; }
+.edit-size .ic { width: 24px; height: 24px; fill: #fff; vertical-align: -6px; }
+.edit-sep { display: inline-block; vertical-align: middle; width: 1px; height: 28px; margin: 0 6px; background: rgba(255, 255, 255, .35); }
+.edit-hint { position: absolute; left: 50%; bottom: 80px; max-width: 80%; -webkit-transform: translateX(-50%); transform: translateX(-50%); padding: 8px 16px; border-radius: 18px; background: rgba(30, 20, 10, .72); color: #fff; font-size: 15px; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0; -webkit-transition: opacity .3s; transition: opacity .3s; pointer-events: none !important; z-index: 41; }
+.edit-hint.show { opacity: 1; }
+.edit-bar { position: absolute; left: 0; right: 0; bottom: 18px; text-align: center; z-index: 40; }
+.edit-btn { display: inline-block; vertical-align: middle; height: 50px; line-height: 50px; padding: 0 24px; margin: 0 6px; border-radius: 25px; background: rgba(70, 35, 10, .58); -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%); color: #fff; font-weight: 600; font-size: 17px; box-shadow: 0 6px 20px rgba(0, 0, 0, .2), inset 0 0 0 1px rgba(255, 255, 255, .14); }
+.classic .edit-btn { background: rgba(70, 35, 10, .88); }
+.edit-btn.round { width: 50px; padding: 0; font-size: 30px; font-weight: 400; }
+.edit-btn.strong { background: #fff; color: #1c1c1e; }
+.edit-btn.pressed { opacity: .65; }
+.arranging .dots, .arranging .status-pill, .arranging .corner-btn { display: none; }
+
+.sheet-picker { width: 700px; }
+.pk-grid { overflow: hidden; margin: 0 -4px; }
+.pk-cell { float: left; box-sizing: border-box; width: 23%; margin: 1%; height: 92px; padding-top: 16px; border-radius: 18px; background: rgba(255, 255, 255, .09); text-align: center; }
+.pk-cell .ic { width: 30px; height: 30px; fill: #fff; }
+.pk-cell.pressed { background: rgba(255, 255, 255, .22); }
+.pk-label { font-size: 14px; font-weight: 600; margin-top: 6px; padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-row { padding-right: 16px; }
+.wp-row { text-align: center; }
+.wp-swatch { display: inline-block; width: 56px; height: 56px; margin: 6px; border-radius: 16px; border: 3px solid transparent; box-shadow: 0 2px 8px rgba(0, 0, 0, .25); }
+.wp-swatch.sel { border-color: #fff; }
+.wp-swatch.pressed { -webkit-transform: scale(.94); transform: scale(.94); }

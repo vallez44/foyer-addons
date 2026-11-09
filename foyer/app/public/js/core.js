@@ -141,7 +141,13 @@
     a2hs_title: 'Ajoutez Foyer à l\'écran d\'accueil', a2hs_text: 'Touchez Partager, puis « Sur l\'écran d\'accueil », puis Ajouter. Ouvrez Foyer depuis sa nouvelle icône : il se configurera tout seul.',
     a2hs_safari: 'Continuer dans Safari', ask_admin: 'Demandez à la personne qui a installé Foyer.', list_empty: 'Liste vide', lists: 'Listes',
     controls: 'Commandes', dim: 'Assombrir', events_week: 'Cette semaine', pick_speaker: 'Choisir l\'enceinte', degrees: '°', more: 'Plus',
-    hourly: 'Prochaines heures', daily: 'Prochains jours', low: 'Min', high: 'Max', no_devices: 'Aucun appareil', error: 'Action refusée', on_s: 'allumé', on_fs: 'allumée'
+    hourly: 'Prochaines heures', daily: 'Prochains jours', low: 'Min', high: 'Max', no_devices: 'Aucun appareil', error: 'Action refusée', on_s: 'allumé', on_fs: 'allumée',
+    edit_layout: 'Modifier la disposition', edit_done: 'OK', customize: 'Personnaliser', add_tile: 'Ajouter une tuile', change_tile: 'Changer la tuile',
+    layout_saved: 'Disposition enregistrée', no_room_left: 'Plus de place : réduisez ou retirez une tuile', hidden_tiles_1: '1 tuile ne tient pas sur l\'écran',
+    hidden_tiles_n: '{n} tuiles ne tiennent pas sur l\'écran', edit_hint: 'Glissez une tuile pour la déplacer · touchez-la pour changer sa taille',
+    widgets: 'Widgets', devices: 'Appareils', no_room: 'Sans pièce', wallpaper: 'Fond d\'écran', back_to_suggestion: 'Revenir à la suggestion automatique',
+    all_settings: 'Tous les réglages', confirm_ok: 'Oui', w_clock: 'Horloge', w_weather: 'Météo', w_photo: 'Photo', w_agenda: 'À venir', w_media: 'Musique',
+    w_house: 'Maison', w_all_off: 'Tout éteindre', w_date: 'Date', w_sun: 'Soleil', w_thermostat: 'Thermostat', w_temperature: 'Température', w_list: 'Liste'
   };
   var EN = {
     on: 'On', off: 'Off', on_f: 'On', off_f: 'Off', open: 'Open', closed: 'Closed', open_f: 'Open', closed_f: 'Closed', opening: 'Opening…', closing: 'Closing…',
@@ -165,7 +171,13 @@
     a2hs_title: 'Add Foyer to your Home Screen', a2hs_text: 'Tap Share, then Add to Home Screen, then Add. Open Foyer from its new icon: it sets itself up.',
     a2hs_safari: 'Continue in Safari', ask_admin: 'Ask the person who set up Foyer.', list_empty: 'Empty list', lists: 'Lists', controls: 'Controls', dim: 'Dim',
     events_week: 'This week', pick_speaker: 'Choose speaker', degrees: '°', more: 'More', hourly: 'Next hours', daily: 'Next days', low: 'L', high: 'H',
-    no_devices: 'No devices', error: 'Refused', on_s: 'on', on_fs: 'on'
+    no_devices: 'No devices', error: 'Refused', on_s: 'on', on_fs: 'on',
+    edit_layout: 'Arrange tiles', edit_done: 'Done', customize: 'Customize', add_tile: 'Add a tile', change_tile: 'Change tile',
+    layout_saved: 'Layout saved', no_room_left: 'No room left: make a tile smaller or remove one', hidden_tiles_1: '1 tile does not fit on the screen',
+    hidden_tiles_n: '{n} tiles do not fit on the screen', edit_hint: 'Drag a tile to move it · tap it to change its size',
+    widgets: 'Widgets', devices: 'Devices', no_room: 'No room', wallpaper: 'Wallpaper', back_to_suggestion: 'Back to the suggested layout',
+    all_settings: 'All settings', confirm_ok: 'Yes', w_clock: 'Clock', w_weather: 'Weather', w_photo: 'Photo', w_agenda: 'Up Next', w_media: 'Music',
+    w_house: 'Home', w_all_off: 'All Off', w_date: 'Date', w_sun: 'Sun', w_thermostat: 'Thermostat', w_temperature: 'Temperature', w_list: 'List'
   };
   var DAYS = { fr: ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'], en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] };
   var MONTHS = {

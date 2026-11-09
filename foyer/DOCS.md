@@ -54,13 +54,28 @@ les autres s'activent dans **Réglages → Cadrans**.
 ## Gestes
 
 - **Toucher le haut d'une tuile** (l'icône) : allume, éteint, ouvre, ferme, lance la scène.
-- **Toucher le nom** (bas de la tuile) ou **appui long** : la page complète (luminosité, position, couleur…).
+- **Toucher le nom** (bas de la tuile) : la page complète (luminosité, position, couleur…).
 - **Glisser vers le haut ou le bas sur une lumière**, un volet ou un ventilateur : règle le niveau.
 - **Flèches du thermostat** : changent la consigne (envoyée une seconde après le dernier appui).
 - **Tirer vers le bas depuis le haut** : le Centre de contrôle (musique, luminosité de l'écran, volume,
   première lumière, première serrure, une scène, Réglages).
 - Une tuile **blanche** est allumée ; une tuile **rouge** demande votre attention (porte ouverte, serrure
   déverrouillée).
+
+## Disposer les tuiles directement sur l'écran
+
+Sur Maison Modulaire et Maison Modulaire Plus, **maintenez une tuile environ une seconde** (ou Centre de contrôle →
+**Modifier la disposition**). Les tuiles se mettent à trembler :
+
+- **glissez** une tuile pour la déplacer (sans lever le doigt après l'appui long, ou ensuite) ;
+- **touchez** une tuile pour choisir sa taille : **S** (1×1), **W** (2×1), **M** (2×2), **L** (3×2), ou **⇄** pour changer
+  ce qu'elle montre ;
+- **−** retire la tuile, **+** en ajoute une (widgets, pièces, appareils de chaque pièce) ;
+- **Personnaliser** change le fond d'écran ou revient à la suggestion automatique ;
+- **OK** enregistre la disposition, pour tous les écrans (et l'onglet Disposition des Réglages).
+
+Foyer refuse un déplacement ou un agrandissement qui ferait sortir une tuile de l'écran. Les scripts et boutons ne
+peuvent être ajoutés que depuis Home Assistant (barre latérale), car ils peuvent tout exécuter.
 
 ## Réglages
 

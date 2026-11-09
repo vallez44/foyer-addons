@@ -48,20 +48,18 @@
     return 'wall wall-' + (s.wallpaper || 'amber');
   }
 
-  function gridRender(f, force) {
+  F.gridSpecs = function (f) {
     var lay = F.block('layout');
-    var specs = (lay && lay.tiles && lay.tiles[f.id]) || [];
+    return (lay && lay.tiles && lay.tiles[f.id]) || [];
+  };
+
+  F.gridSig = function (f, specs) {
     var s = F.settings();
-    var sig = JSON.stringify(specs) + '|' + f.w + 'x' + f.h + '|' + (s.wallpaper || '') + '|' + (F.safeTop || 0);
-    if (sig === f.sig && !force) {
-      for (var k = 0; k < f.tiles.length; k++) f.tiles[k].update();
-      return;
-    }
-    f.sig = sig;
-    f.wall.className = wallpaperClass(f);
-    F.clear(f.grid);
-    f.tiles = [];
-    if (!f.w || !f.h) return;
+    return JSON.stringify(specs) + '|' + f.w + 'x' + f.h + '|' + (s.wallpaper || '') + '|' + (F.safeTop || 0);
+  };
+
+  /** Pixel boxes for tiles in order: boxes[i] is null when tile i does not fit on the screen. */
+  F.gridBoxes = function (f, specs) {
     var g = w.FOYER_LAYOUT.gridFor(f.id, f.landscape);
     var cols = g[0];
     var rows = g[1];
@@ -71,22 +69,35 @@
     var gap = Math.round(pad * 0.72);
     var cw = (f.w - pad * 2 - gap * (cols - 1)) / cols;
     var ch = (f.h - top - pad * 2 - gap * (rows - 1)) / rows;
-    var anchor = null;
-    for (var i = 0; i < placed.length; i++) {
-      var p = placed[i];
-      var t = new F.Tile(p.tile, f);
-      f.grid.appendChild(t.el);
-      var x = pad + p.x * (cw + gap);
-      var y = top + pad + p.y * (ch + gap);
-      var tw = p.w * cw + (p.w - 1) * gap;
-      var th = p.h * ch + (p.h - 1) * gap;
-      t.setBox(x, y, tw, th);
-      f.tiles.push(t);
-      if (!anchor && p.tile.type === 'clock') anchor = { x: x, y: y, w: tw, h: th };
+    var boxes = [];
+    for (var i = 0; i < specs.length; i++) boxes.push(null);
+    for (var j = 0; j < placed.length; j++) {
+      var p = placed[j];
+      boxes[p.index] = {
+        x: pad + p.x * (cw + gap), y: top + pad + p.y * (ch + gap),
+        w: p.w * cw + (p.w - 1) * gap, h: p.h * ch + (p.h - 1) * gap
+      };
     }
-    if (!anchor && f.tiles.length) {
-      var t0 = f.tiles[0];
-      anchor = { x: parseFloat(t0.el.style.left), y: parseFloat(t0.el.style.top), w: t0.w, h: t0.h };
+    return { boxes: boxes, cols: cols, rows: rows, cw: cw, ch: ch, gap: gap, pad: pad, top: top };
+  };
+
+  /** The big dial of the wallpaper sits behind the clock (or the first tile). */
+  F.placeWall = function (f, specs, boxes) {
+    f.wall.className = wallpaperClass(f);
+    var anchor = null;
+    for (var i = 0; i < specs.length; i++) {
+      if (boxes[i] && specs[i].type === 'clock') {
+        anchor = boxes[i];
+        break;
+      }
+    }
+    if (!anchor) {
+      for (var k = 0; k < boxes.length; k++) {
+        if (boxes[k]) {
+          anchor = boxes[k];
+          break;
+        }
+      }
     }
     if (anchor) {
       var r = Math.max(anchor.w, anchor.h) * 1.32;
@@ -96,7 +107,31 @@
     }
     var r2 = f.h * 1.06;
     F.css(f.sweep, { left: (f.w * 1.04 - r2) + 'px', top: (f.h * 1.22 - r2) + 'px', width: (2 * r2) + 'px', height: (2 * r2) + 'px' });
+  };
+
+  function gridRender(f, force) {
+    var specs = F.gridSpecs(f);
+    var sig = F.gridSig(f, specs);
+    if (sig === f.sig && !force) {
+      for (var k = 0; k < f.tiles.length; k++) f.tiles[k].update();
+      return;
+    }
+    f.sig = sig;
+    F.clear(f.grid);
+    f.tiles = [];
+    if (!f.w || !f.h) return;
+    var geo = F.gridBoxes(f, specs);
+    for (var i = 0; i < specs.length; i++) {
+      var b = geo.boxes[i];
+      if (!b) continue;
+      var t = new F.Tile(specs[i], f);
+      f.grid.appendChild(t.el);
+      t.setBox(b.x, b.y, b.w, b.h);
+      f.tiles.push(t);
+    }
+    F.placeWall(f, specs, geo.boxes);
   }
+  F.gridRender = gridRender;
 
   function gridFace() {
     return {
@@ -108,12 +143,17 @@
         f.grid = F.el('div', 'grid', f.el);
         f.sig = '';
       },
-      layout: function (f) { gridRender(f, true); },
+      layout: function (f) {
+        if (F.edit && F.edit.isEditing(f)) F.edit.relayout(true);
+        else gridRender(f, true);
+      },
       update: function (f, changed, blocks, full) {
-        if (full || blocks.layout || blocks.settings || blocks.status) {
+        var editing = F.edit && F.edit.isEditing(f);
+        if (!editing && (full || blocks.layout || blocks.settings || blocks.status)) {
           gridRender(f, false);
           return;
         }
+        if (editing && blocks.settings) F.edit.relayout(false);
         for (var i = 0; i < f.tiles.length; i++) {
           if (f.tiles[i].relevant(changed, blocks)) f.tiles[i].update();
         }
