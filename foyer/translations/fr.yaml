@@ -1,0 +1,25 @@
+configuration:
+  direct_access:
+    name: Accès direct
+    description: >-
+      Permet d'ouvrir Foyer en plein écran depuis l'écran d'accueil de l'iPad, et sur les anciens iPad,
+      via son propre port (8110, section Réseau). Chaque écran s'associe une fois avec un code
+      (Foyer → Réglages → iPad, ou le journal de l'add-on).
+  pairing_code:
+    name: Code d'appairage fixe
+    description: >-
+      Facultatif. Un code fixe de 8 à 12 chiffres. Le changer oublie tous les écrans associés.
+      Laissez vide pour utiliser les codes à usage unique.
+  allowed_hosts:
+    name: Autres adresses
+    description: >-
+      Facultatif. Autres noms utilisés par vos iPad pour ouvrir Foyer, séparés par des virgules.
+      Les adresses IP, homeassistant.local, les noms .lan/.home/.internal, les noms d'un seul mot
+      et les noms Tailscale (*.ts.net) fonctionnent toujours.
+  sensitive_from_ha_only:
+    name: Serrures, alarmes et portes de garage depuis Home Assistant uniquement
+    description: >-
+      Les écrans associés par le port direct les affichent mais ne peuvent ni déverrouiller,
+      ni désarmer, ni ouvrir. Se règle aussi dans Foyer → Réglages → Options.
+network:
+  8110/tcp: Accès direct pour les iPad en plein écran

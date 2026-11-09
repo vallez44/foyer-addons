@@ -1,0 +1,24 @@
+# Foyer for Home Assistant Container or Core (no Apps / Add-ons page).
+# Put this folder next to the "foyer" folder, write foyer.env (see foyer.env.example, chmod 600), then:
+#   docker compose up -d --build && docker compose logs --tail 30
+# The log shows the pairing code for the first iPad. Update: git pull && docker compose up -d --build
+services:
+  foyer:
+    build:
+      context: ../foyer
+    image: foyer:local
+    container_name: foyer
+    restart: unless-stopped
+    network_mode: host            # reaches Home Assistant at http://localhost:<its port>
+    env_file: foyer.env           # HA_URL and HA_TOKEN, written by you
+    environment:
+      FOYER_PORT: "8110"          # the iPad opens http://<this computer>:8110
+      FOYER_DATA_DIR: /data
+      FOYER_MEDIA_DIR: /media
+      TZ: Europe/Paris
+    volumes:
+      - foyer-data:/data          # paired screens, settings
+      - foyer-media:/media        # your photos
+volumes:
+  foyer-data:
+  foyer-media:
