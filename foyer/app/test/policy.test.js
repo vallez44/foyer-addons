@@ -18,7 +18,7 @@ function fakeHome(states, areas = { 'light.salon': 'salon', 'light.cuisine': 'cu
 const home = fakeHome([
   st('light.salon', 'on', { brightness: 200 }), st('light.salon2', 'off'), st('light.cuisine', 'on'),
   st('lock.porte', 'locked'), st('cover.garage', 'closed', { device_class: 'garage' }), st('cover.volets', 'closed', { device_class: 'shutter' }),
-  st('climate.salon', 'heat', { hvac_modes: ['off', 'heat'] }), st('script.reboot_nas', 'off'), st('alarm_control_panel.maison', 'armed_away'),
+  st('climate.salon', 'heat', { hvac_modes: ['off', 'heat'] }), st('script.reboot_nas', 'off'), st('alarm_control_panel.maison', 'armed_away'), st('alarm_control_panel.alarmo', 'triggered', { code_format: 'number' }),
   st('update.core', 'on'), st('media_player.salon', 'playing'),
 ]);
 const ctx = { fromHa: false, admin: false };
@@ -65,6 +65,10 @@ test('locks, alarms and garage doors can be limited to Home Assistant itself', (
   assert.throws(() => run({ entity_id: 'lock.porte', service: 'unlock' }, locked), /only from Home Assistant/);
   assert.throws(() => run({ entity_id: 'cover.garage', service: 'open_cover' }, locked), /only from Home Assistant/);
   assert.throws(() => run({ entity_id: 'alarm_control_panel.maison', service: 'alarm_disarm' }, locked), /only from Home Assistant/);
+  // An alarm that asks for its own code checks it: the wall keypad may disarm it.
+  assert.deepStrictEqual(run({ entity_id: 'alarm_control_panel.alarmo', service: 'alarm_disarm', data: { code: '2468' } }, locked), [
+    { domain: 'alarm_control_panel', service: 'alarm_disarm', data: { code: '2468' }, target: { entity_id: 'alarm_control_panel.alarmo' } },
+  ]);
   // Closing, locking and arming stay possible; shutters are not garage doors.
   assert.strictEqual(run({ entity_id: 'lock.porte', service: 'lock' }, locked).length, 1);
   assert.strictEqual(run({ entity_id: 'cover.garage', service: 'close_cover' }, locked).length, 1);

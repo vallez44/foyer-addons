@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0
+
+- **Verre clair, comme le Liquid Glass d'iOS** : les tuiles éteintes laissent voir le fond d'écran (peu de flou,
+  liseré lumineux, reflet). Réglages → Affichage → Style : Verre, Dépoli (l'ancien rendu) ou Plat.
+- **Icônes** plus grandes et plus pleines ; une lampe de chevet dessinée pour Foyer ; une baie vitrée s'affiche
+  en porte coulissante.
+- **Alarme sur l'iPad** : compte à rebours d'armement (avec Annuler), clavier et compte à rebours à l'entrée,
+  plein écran rouge et sirène quand elle se déclenche (Réglages → Alarme). Une alarme qui demande son code peut
+  être désarmée au clavier de l'iPad.
+- **Tuile Énergie** : consommation et coût de la veille (Linky, tableau de bord Énergie), total du mois,
+  7 derniers jours ; puissance en direct dès qu'un compteur la donne.
+- Réglages → Capteurs des HomePod liste les mesures des pièces.
+
 ## 0.3.1
 
 - **Apple Music sur les HomePod avec Music Assistant** : Foyer réunit chaque HomePod et son double Music

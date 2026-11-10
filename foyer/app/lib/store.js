@@ -27,10 +27,11 @@ function defaultSettings() {
     lang: null,
     apps: { apple: { music: true }, hidden: {} },
     defaultCalendar: null,
+    alarmSiren: true,
   };
 }
 
-const TILE_TYPES = new Set(['entity', 'thermostat', 'clock', 'weather', 'photo', 'agenda', 'camera', 'room', 'house', 'action', 'media', 'date', 'sun', 'todo', 'sensor']);
+const TILE_TYPES = new Set(['entity', 'thermostat', 'clock', 'weather', 'photo', 'agenda', 'camera', 'room', 'house', 'action', 'media', 'date', 'sun', 'todo', 'sensor', 'energy']);
 const SIZES = new Set(['S', 'W', 'T', 'M', 'L', 'XL']);
 const isTime = (s) => typeof s === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 const isEntityId = (s) => typeof s === 'string' && /^[a-z0-9_]+\.[a-z0-9_]+$/.test(s);
@@ -81,7 +82,7 @@ function sanitizeSettings(input, current) {
     }
   }
   if (WALLPAPERS.includes(input.wallpaper)) s.wallpaper = input.wallpaper;
-  if (input.style === 'glass' || input.style === 'flat') s.style = input.style;
+  if (['glass', 'frosted', 'flat'].includes(input.style)) s.style = input.style;
   if (input.night && typeof input.night === 'object') {
     const n = input.night;
     if (typeof n.enabled === 'boolean') s.night.enabled = n.enabled;
@@ -98,6 +99,7 @@ function sanitizeSettings(input, current) {
   if (input.calendars === null) s.calendars = null;
   else if (Array.isArray(input.calendars)) s.calendars = input.calendars.filter(isEntityId).slice(0, 30);
   if (typeof input.sensitiveFromHaOnly === 'boolean') s.sensitiveFromHaOnly = input.sensitiveFromHaOnly;
+  if (typeof input.alarmSiren === 'boolean') s.alarmSiren = input.alarmSiren;
   if (input.lang === null || input.lang === 'fr' || input.lang === 'en') s.lang = input.lang;
   if (input.defaultCalendar === null || isEntityId(input.defaultCalendar)) s.defaultCalendar = input.defaultCalendar;
   if (input.apps && typeof input.apps === 'object') {

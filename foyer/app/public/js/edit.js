@@ -580,6 +580,7 @@
     if (climates.length) widgets.unshift(['thermostat', 'w_thermostat', 'thermostat', 'M']);
     else widgets.push(['thermostat', 'w_temperature', 'thermometer', 'M']);
     if (F.entitiesOf('todo').length) widgets.push(['todo', 'w_list', 'format-list-checks', 'W']);
+    if (F.block('energy')) widgets.push(['energy', 'w_energy', 'lightning-bolt', 'W']);
     for (var i = 0; i < widgets.length; i++) {
       (function (wd) {
         pickCell(grid, wd[2], F.t(wd[1]), function () {

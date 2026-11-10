@@ -80,6 +80,18 @@ class HASource extends EventEmitter {
     return this.conn.command(msg, 30000);
   }
 
+  /** The Energy dashboard's sources (Linky, a meter…). */
+  getEnergyPrefs() {
+    return this.conn.command({ type: 'energy/get_prefs' });
+  }
+
+  /** Long-term statistics (what the Energy dashboard draws), one value per period. */
+  statistics(ids, startIso, period, units) {
+    const msg = { type: 'recorder/statistics_during_period', start_time: startIso, statistic_ids: ids, period, types: ['change'] };
+    if (units) msg.units = units;
+    return this.conn.command(msg, 30000);
+  }
+
   /** Searches a player's music (Music Assistant: Apple Music, the library, radios…). */
   async searchMedia(entityId, query) {
     const r = await this.conn.callService('media_player', 'search_media', { search_query: query }, { entity_id: entityId }, true);

@@ -34,6 +34,7 @@
     { id: 'music', icon: 'music', color: '#ff2d55', label: T('Musique', 'Music'), value: musicValue, group: 3 },
     { id: 'calendar', icon: 'calendar-month', color: '#ff3b30', label: T('Agenda et rappels', 'Calendar & Reminders'), group: 3 },
     { id: 'sensors', icon: 'thermometer', color: '#30b0c7', label: T('Capteurs des HomePod', 'HomePod Sensors'), group: 3 },
+    { id: 'alarm', icon: 'alarm-light', color: '#ff3b30', label: T('Alarme', 'Alarm'), group: 3 },
     { id: 'security', icon: 'shield-lock', color: '#8e8e93', label: T('Sécurité', 'Security'), admin: true, group: 4 },
     { id: 'about', icon: 'information', color: '#8e8e93', label: T('À propos', 'About'), value: function () { return sess().version || ''; }, group: 4 },
     { id: 'privacy', icon: 'lock', color: '#007aff', label: T('Confidentialité', 'Privacy'), group: 4 }
@@ -595,7 +596,7 @@
       }(id));
     }
     var c2 = group(body, null, T('Le verre dépoli demande un iPad récent ; le style plat convient aux anciens iPad.', 'Frosted glass needs a recent iPad; Flat suits older iPads.'));
-    segmented(c2, T('Style', 'Style'), [{ label: T('Verre', 'Glass'), value: 'glass' }, { label: T('Plat', 'Flat'), value: 'flat' }], st.style || 'glass', function (v) { save({ style: v }); });
+    segmented(c2, T('Style', 'Style'), [{ label: T('Verre', 'Glass'), value: 'glass' }, { label: T('Dépoli', 'Frosted'), value: 'frosted' }, { label: T('Plat', 'Flat'), value: 'flat' }], st.style || 'glass', function (v) { save({ style: v }); });
     var c3 = group(body, T('Cet écran', 'This Screen'));
     sliderRow(c3, T('Luminosité', 'Brightness'), Math.round((1 - F.getUserDim() / 0.85) * 100), 10, 100, 5, function (v) { F.setUserDim((1 - v / 100) * 0.85); });
     var night = st.night || {};
@@ -755,7 +756,10 @@
     var found = [];
     for (var id in F.store.entities) {
       if (!F.store.entities.hasOwnProperty(id) || F.domain(id) !== 'sensor') continue;
-      if (/homepod/.test(id) || /homepod/i.test(F.store.entities[id].fn || '')) found.push(id);
+      var se = F.store.entities[id];
+      var sdc = se.at && se.at.device_class;
+      // The HomePod readings land in a room's « Température … » / « Humidité … » sensors.
+      if (/homepod/.test(id) || /homepod/i.test(se.fn || '') || ((sdc === 'temperature' || sdc === 'humidity') && se.a)) found.push(id);
     }
     found.sort();
     var c = group(body, 'HomePod', T('Les HomePod mesurent la température et l\'humidité, mais Apple ne les partage qu\'avec l\'app Maison. Une automatisation de la Maison d\'Apple les envoie à Home Assistant toutes les 15 minutes ; Foyer les montre ensuite dans chaque pièce.',
@@ -766,6 +770,30 @@
       var a = F.area(e.a);
       row(c, { icon: F.entityIcon(found[i], e), color: '#30b0c7', label: e.n, sub: a ? a.name : null, value: F.stateText(found[i], e) });
     }
+  };
+
+  PAGES.alarm = function (body) {
+    var panels = F.entitiesOf('alarm_control_panel');
+    var c = group(body, T('Alarmes de Home Assistant', 'Home Assistant Alarms'), T('Foyer montre l\'armement (avec le compte à rebours de sortie), demande le code à l\'entrée et affiche l\'alarme en plein écran quand elle se déclenche. Les notifications, les lampes qui clignotent, la sirène et les caméras se règlent dans Home Assistant (automatisations ou Alarmo).',
+      'Foyer shows arming (with the exit countdown), asks for the code on entry and shows the alarm full screen when it goes off. Notifications, flashing lights, the siren and cameras are set up in Home Assistant (automations or Alarmo).'));
+    if (!panels.length) row(c, { label: T('Aucune alarme dans Home Assistant', 'No alarm in Home Assistant') });
+    for (var i = 0; i < panels.length; i++) {
+      (function (id) {
+        var e = F.e(id);
+        row(c, {
+          icon: F.entityIcon(id, e), color: e.s === 'disarmed' ? '#8e8e93' : (e.s === 'triggered' ? '#ff3b30' : '#34c759'),
+          label: e.n, sub: (e.at && e.at.code_format) ? T('Code demandé pour désarmer', 'Code required to disarm') : T('Sans code', 'No code'),
+          value: F.stateText(id, e),
+          onTap: function () { UI.hide(); F.sheets.open(id); }
+        });
+      }(panels[i]));
+    }
+    var c2 = group(body, T('Sur cet iPad', 'On this iPad'), T('Tant qu\'il n\'y a pas de vraie sirène, l\'iPad sonne quand l\'alarme se déclenche. Safari ne laisse jouer un son qu\'après un premier toucher de l\'écran depuis le dernier chargement de Foyer, et le volume de l\'iPad doit être monté.',
+      'Until there is a real siren, the iPad sounds when the alarm goes off. Safari only plays sound after the screen has been touched once since Foyer last loaded, and the iPad\'s volume must be up.'));
+    row(c2, {
+      label: T('Sirène sur les iPad', 'Siren on the iPads'),
+      toggle: { on: s().alarmSiren !== false, onChange: function (v) { save({ alarmSiren: v }); } }
+    });
   };
 
   PAGES.security = function (body) {

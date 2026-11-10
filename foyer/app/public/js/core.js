@@ -147,7 +147,9 @@
     hidden_tiles_n: '{n} tuiles ne tiennent pas sur l\'écran', cannot_move_here: 'Pas assez de place à cet endroit', edit_hint: 'Glissez une tuile pour la déplacer · touchez-la pour changer sa taille',
     widgets: 'Widgets', devices: 'Appareils', no_room: 'Sans pièce', wallpaper: 'Fond d\'écran', back_to_suggestion: 'Revenir à la suggestion automatique',
     all_settings: 'Tous les réglages', confirm_ok: 'Oui', w_clock: 'Horloge', w_weather: 'Météo', w_photo: 'Photo', w_agenda: 'À venir', w_media: 'Musique',
-    w_house: 'Maison', w_all_off: 'Tout éteindre', w_date: 'Date', w_sun: 'Soleil', w_thermostat: 'Thermostat', w_temperature: 'Température', w_list: 'Liste'
+    w_house: 'Maison', w_all_off: 'Tout éteindre', w_date: 'Date', w_sun: 'Soleil', w_thermostat: 'Thermostat', w_temperature: 'Température', w_list: 'Liste', w_energy: 'Énergie',
+    energy: 'Énergie', energy_now: 'En direct', yesterday: 'Hier', this_month: 'ce mois', energy_none: 'Pas de compteur dans Home Assistant',
+    energy_live_hint: 'Linky envoie la consommation de la veille. Pour la puissance en direct, il faut un lecteur sur la prise TIC du compteur (par exemple un ZLinky en Zigbee) : Foyer l\'affiche alors ici tout seul.'
   };
   var EN = {
     on: 'On', off: 'Off', on_f: 'On', off_f: 'Off', open: 'Open', closed: 'Closed', open_f: 'Open', closed_f: 'Closed', opening: 'Opening…', closing: 'Closing…',
@@ -177,7 +179,9 @@
     hidden_tiles_n: '{n} tiles do not fit on the screen', cannot_move_here: 'Not enough room there', edit_hint: 'Drag a tile to move it · tap it to change its size',
     widgets: 'Widgets', devices: 'Devices', no_room: 'No room', wallpaper: 'Wallpaper', back_to_suggestion: 'Back to the suggested layout',
     all_settings: 'All settings', confirm_ok: 'Yes', w_clock: 'Clock', w_weather: 'Weather', w_photo: 'Photo', w_agenda: 'Up Next', w_media: 'Music',
-    w_house: 'Home', w_all_off: 'All Off', w_date: 'Date', w_sun: 'Sun', w_thermostat: 'Thermostat', w_temperature: 'Temperature', w_list: 'List'
+    w_house: 'Home', w_all_off: 'All Off', w_date: 'Date', w_sun: 'Sun', w_thermostat: 'Thermostat', w_temperature: 'Temperature', w_list: 'List', w_energy: 'Energy',
+    energy: 'Energy', energy_now: 'Right now', yesterday: 'Yesterday', this_month: 'this month', energy_none: 'No meter in Home Assistant',
+    energy_live_hint: 'Linky sends the previous day\'s use. For live power, add a reader on the meter\'s TIC port (a ZLinky over Zigbee, for example): Foyer then shows it here by itself.'
   };
   var DAYS = { fr: ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'], en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] };
   var MONTHS = {
@@ -371,7 +375,11 @@
       case 'input_boolean': return s === 'on' ? 'toggle-switch' : 'toggle-switch-off';
       case 'alarm_control_panel': return s === 'disarmed' ? 'shield-off' : (s === 'armed_night' ? 'shield-moon' : 'shield-home');
       case 'binary_sensor':
-        if (dc === 'door') return s === 'on' ? 'door-open' : 'door-closed';
+        if (dc === 'door') {
+          // A bay window (« baie vitrée ») slides.
+          if (/baie|coulissant|sliding|patio/.test(nm)) return s === 'on' ? 'door-sliding-open' : 'door-sliding';
+          return s === 'on' ? 'door-open' : 'door-closed';
+        }
         if (dc === 'garage_door') return s === 'on' ? 'garage-open' : 'garage';
         if (dc === 'window' || dc === 'opening') return s === 'on' ? 'window-open-variant' : 'window-closed-variant';
         if (dc === 'motion' || dc === 'occupancy' || dc === 'presence') return 'motion-sensor';

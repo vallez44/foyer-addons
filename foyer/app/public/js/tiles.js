@@ -871,4 +871,102 @@
     },
     tap: function (t) { if (t.spec.entity) F.sheets.open(t.spec.entity); }
   };
+
+  // ------------------------------------------------------------------ energy: now (a meter) or yesterday (Linky)
+  function kwh(v) { return F.num(v, v < 10 ? 1 : 0) + ' kWh'; }
+  function euros(v) { return v === null || v === undefined ? '' : F.num(v, 2) + ' €'; }
+  function watts(e) {
+    var v = parseFloat(e.s);
+    if (isNaN(v)) return '—';
+    if (e.at && /kW/i.test(e.at.unit_of_measurement || '')) v *= 1000;
+    return v >= 1000 ? F.num(v / 1000, 2) + ' kW' : F.num(v) + ' W';
+  }
+  function dayLabel(key) {
+    var p = key.split('-');
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    var y = new Date();
+    y.setDate(y.getDate() - 1);
+    if (d.toDateString() === y.toDateString()) return F.t('yesterday');
+    return F.cap(F.dayName(d));
+  }
+  F.energySummary = function () {
+    var b = F.block('energy');
+    if (!b) return null;
+    var days = b.days || [];
+    var last = days.length ? days[days.length - 1] : null;
+    var live = b.live ? F.e(b.live) : null;
+    return { b: b, days: days, last: last, live: live && live.s !== 'unavailable' ? live : null };
+  };
+
+  T.energy = {
+    build: function (t) {
+      t.head = F.el('div', 'en-head', t.el);
+      F.icon('lightning-bolt', 'en-ic', t.head);
+      t.label = F.el('span', 'en-label', t.head);
+      t.big = F.el('div', 'en-big', t.el);
+      t.sub = F.el('div', 'en-sub', t.el);
+      t.bars = F.el('div', 'en-bars', t.el);
+    },
+    update: function (t) {
+      var x = F.energySummary();
+      F.clear(t.bars);
+      if (!x || (!x.live && !x.last)) {
+        F.text(t.label, F.t('energy'));
+        F.text(t.big, '—');
+        F.text(t.sub, F.t('energy_none'));
+        return;
+      }
+      if (x.live) {
+        F.text(t.label, F.t('energy_now'));
+        F.text(t.big, watts(x.live));
+        F.text(t.sub, x.last ? dayLabel(x.last.d) + ' ' + kwh(x.last.kwh) + (x.last.eur !== null ? ' · ' + euros(x.last.eur) : '') : '');
+      } else {
+        F.text(t.label, dayLabel(x.last.d));
+        F.text(t.big, kwh(x.last.kwh));
+        var m = x.b.month || {};
+        var parts = [];
+        if (x.last.eur !== null) parts.push(euros(x.last.eur));
+        if (m.kwh !== null && m.kwh !== undefined) parts.push(F.t('this_month') + ' ' + kwh(m.kwh));
+        F.text(t.sub, parts.join(' · '));
+      }
+      // The last seven days, the most recent brighter.
+      var days = x.days.slice(-7);
+      var max = 0;
+      for (var i = 0; i < days.length; i++) max = Math.max(max, days[i].kwh || 0);
+      for (var j = 0; j < days.length; j++) {
+        var col = F.el('div', 'en-col' + (j === days.length - 1 ? ' last' : ''), t.bars);
+        var bar = F.el('div', 'en-bar', col);
+        bar.style.height = (max ? Math.max(6, Math.round((days[j].kwh || 0) / max * 100)) : 6) + '%';
+        var p = days[j].d.split('-');
+        F.el('div', 'en-day', col, F.dayName(new Date(+p[0], +p[1] - 1, +p[2])).charAt(0).toUpperCase());
+      }
+    },
+    relevant: function (t, changed, blocks) {
+      var b = F.block('energy');
+      return Boolean(blocks.energy || (b && b.live && changed[b.live]));
+    },
+    tap: function () { F.energySheet(); }
+  };
+
+  F.energySheet = function () {
+    var x = F.energySummary();
+    var sheet = new F.Sheet(F.t('energy'), x && x.live ? F.t('energy_now') + ' ' + watts(x.live) : '', 'sheet-energy');
+    if (!x || !x.days.length) {
+      F.el('div', 'sheet-empty', sheet.body, F.t('energy_none'));
+    } else {
+      var list = F.el('div', 'en-list', sheet.body);
+      for (var i = x.days.length - 1; i >= 0; i--) {
+        var r = F.el('div', 'en-row', list);
+        F.el('div', 'en-row-d', r, dayLabel(x.days[i].d) + ' ' + x.days[i].d.slice(8, 10) + '/' + x.days[i].d.slice(5, 7));
+        F.el('div', 'en-row-v', r, kwh(x.days[i].kwh) + (x.days[i].eur !== null ? '  ·  ' + euros(x.days[i].eur) : ''));
+      }
+      var m = x.b.month || {};
+      if (m.kwh !== null && m.kwh !== undefined) {
+        var r2 = F.el('div', 'en-row en-total', list);
+        F.el('div', 'en-row-d', r2, F.cap(F.t('this_month')));
+        F.el('div', 'en-row-v', r2, kwh(m.kwh) + (m.eur !== null ? '  ·  ' + euros(m.eur) : ''));
+      }
+    }
+    if (!x || !x.live) F.el('div', 'sheet-note', sheet.body, F.t('energy_live_hint'));
+  };
 }(window));

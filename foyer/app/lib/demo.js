@@ -249,6 +249,32 @@ class DemoSource extends EventEmitter {
     return Promise.resolve(dir('Musique', 'root', [dir('Radios', 'radios'), dir('Playlists', 'playlists'), cams]));
   }
 
+  getEnergyPrefs() {
+    return Promise.resolve({ energy_sources: [{ type: 'grid', stat_energy_from: 'demo:linky', stat_cost: 'demo:linky_cost' }] });
+  }
+
+  statistics(ids, startIso, period) {
+    // A plausible home: 2.5 to 4.5 kWh a day at 0.1952 €/kWh.
+    const day = 86400e3;
+    const start = Date.parse(startIso);
+    const out = {};
+    for (const id of ids) {
+      const cost = id.endsWith('_cost');
+      const rows = [];
+      if (period === 'month') {
+        const kwh = 3.1 * new Date().getDate();
+        rows.push({ start: start, end: Date.now(), change: cost ? kwh * 0.1952 : kwh });
+      } else {
+        for (let t = Math.floor(start / day) * day; t + day <= Date.now(); t += day) {
+          const kwh = 2.5 + ((Math.sin(t / day) + 1) * 1.0);
+          rows.push({ start: t, end: t + day, change: Math.round((cost ? kwh * 0.1952 : kwh) * 100) / 100 });
+        }
+      }
+      out[id] = rows;
+    }
+    return Promise.resolve(out);
+  }
+
   searchMedia(entityId, query) {
     const q = String(query).toLowerCase();
     const item = (title, mid, type, cls) => ({ title, media_class: cls, media_content_id: mid, media_content_type: type, can_play: true, can_expand: false });

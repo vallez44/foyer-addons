@@ -52,7 +52,7 @@ function createApp(cfg, deps = {}) {
 
   /** Settings any screen of the home may change from the screen itself (Settings in Foyer). */
   const SCREEN_PREFS = ['faces', 'startFace', 'wallpaper', 'style', 'night', 'returnAfter', 'photoInterval', 'speaker', 'apps', 'lang',
-    'calendars', 'defaultCalendar', 'weatherEntity', 'thermostatEntity'];
+    'calendars', 'defaultCalendar', 'weatherEntity', 'thermostatEntity', 'alarmSiren'];
 
   function computeLayouts() {
     const s = store.settings;

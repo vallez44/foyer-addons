@@ -24,7 +24,7 @@ const ATTRS = {
   cover: ['current_position', 'current_tilt_position'],
   climate: ['current_temperature', 'temperature', 'target_temp_high', 'target_temp_low', 'target_temp_step', 'hvac_modes', 'hvac_action', 'min_temp', 'max_temp', 'preset_mode', 'current_humidity'],
   media_player: ['media_title', 'media_artist', 'media_album_name', 'media_content_type', 'media_duration', 'media_position', 'media_position_updated_at', 'volume_level', 'is_volume_muted', 'app_name', 'source'],
-  alarm_control_panel: ['code_format', 'code_arm_required', 'changed_by'],
+  alarm_control_panel: ['code_format', 'code_arm_required', 'changed_by', 'delay', 'next_state', 'arm_mode'],
   lock: ['code_format'],
   weather: ['temperature', 'apparent_temperature', 'humidity', 'wind_speed', 'wind_bearing', 'wind_gust_speed', 'pressure', 'uv_index', 'cloud_coverage', 'visibility', 'temperature_unit', 'wind_speed_unit', 'pressure_unit', 'precipitation_unit'],
   sun: ['next_rising', 'next_setting', 'next_dawn', 'next_dusk', 'elevation', 'rising'],
@@ -62,7 +62,7 @@ class Home extends EventEmitter {
     this.nativeOf = new Map();
     this.areas = [];
     this.config = {};
-    this.blocks = { weather: null, calendar: null, todo: null };
+    this.blocks = { weather: null, calendar: null, todo: null, energy: null };
     this.extraBlocks = {};
     this.epoch = randomId(4);
     this.v = 1;
@@ -94,11 +94,15 @@ class Home extends EventEmitter {
   start() {
     this.source.start();
     this.calendarTimer = setInterval(() => this._refreshCalendar(), 10 * 60 * 1000);
+    // Linky's data arrives once a day: every half hour is plenty.
+    this.energyTimer = setInterval(() => this.loadEnergy().catch((e) => this.log.warn(`energy: ${e.message}`)), 30 * 60 * 1000);
+    if (this.energyTimer.unref) this.energyTimer.unref();
     if (this.calendarTimer.unref) this.calendarTimer.unref();
   }
 
   stop() {
     clearInterval(this.calendarTimer);
+    clearInterval(this.energyTimer);
     this._emitChange.cancel();
     this._refreshRegistries.cancel();
     this._refreshCalendar.cancel();
@@ -151,6 +155,7 @@ class Home extends EventEmitter {
     this.emit('loaded');
     await Promise.all([
       this.setupWeather().catch((e) => this.log.warn(`weather: ${e.message}`)),
+      this.loadEnergy().catch((e) => this.log.warn(`energy: ${e.message}`)),
       this.loadCalendar().catch((e) => this.log.warn(`calendar: ${e.message}`)),
       this.loadTodos().catch((e) => this.log.warn(`lists: ${e.message}`)),
     ]);
@@ -438,6 +443,86 @@ class Home extends EventEmitter {
     const all = [...this.states.keys()].filter((id) => id.startsWith('calendar.') && this.isEligible(id)).sort();
     if (Array.isArray(s.calendars) && s.calendars.length) return all.filter((id) => s.calendars.includes(id));
     return all;
+  }
+
+  /** A whole-home power meter (a Linky reader, a clamp…), never a smart plug. */
+  findLivePower() {
+    let best = null;
+    for (const [id, st] of this.states) {
+      if (!id.startsWith('sensor.') || !this._eligible(id)) continue;
+      const a = st.attributes || {};
+      if (a.device_class !== 'power') continue;
+      const name = `${id} ${a.friendly_name || ''}`.toLowerCase();
+      if (!/linky|teleinfo|t[ée]l[ée]info|zlinky|lixee|sinst|papp|compteur|meter|grid|r[ée]seau|consommation totale|maison/.test(name)) continue;
+      if (!best || /linky|teleinfo|zlinky|sinst|papp/.test(name)) best = id;
+    }
+    return best;
+  }
+
+  /** What the house consumed (the Energy dashboard's grid source), day by day, and now if a meter says. */
+  async loadEnergy() {
+    if (!this.source.getEnergyPrefs || !this.source.statistics) return;
+    let prefs = null;
+    try {
+      prefs = await this.source.getEnergyPrefs();
+    } catch (e) {
+      prefs = null; // no Energy dashboard yet
+    }
+    const energyIds = [];
+    const costIds = [];
+    for (const g of ((prefs && prefs.energy_sources) || []).filter((x) => x && x.type === 'grid')) {
+      for (const f of [g].concat(Array.isArray(g.flow_from) ? g.flow_from : [])) {
+        if (f && typeof f.stat_energy_from === 'string' && !energyIds.includes(f.stat_energy_from)) energyIds.push(f.stat_energy_from);
+        if (f && typeof f.stat_cost === 'string' && !costIds.includes(f.stat_cost)) costIds.push(f.stat_cost);
+      }
+    }
+    const live = this.findLivePower();
+    if (!energyIds.length && !live) {
+      if (this.blocks.energy) {
+        this.blocks.energy = null;
+        this.markBlock('energy');
+      }
+      return;
+    }
+    const tz = this.config.time_zone || 'Europe/Paris';
+    const dayKey = (ms) => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
+    const ms = (v) => (typeof v === 'number' ? (v < 1e12 ? v * 1000 : v) : Date.parse(v));
+    const ids = energyIds.concat(costIds);
+    const days = new Map();
+    const month = { kwh: null, eur: null };
+    if (ids.length) {
+      const daily = await this.source.statistics(ids, new Date(Date.now() - 9 * 86400e3).toISOString(), 'day', { energy: 'kWh' });
+      for (const id of ids) {
+        for (const row of (daily && daily[id]) || []) {
+          if (typeof row.change !== 'number') continue;
+          const k = dayKey(ms(row.start) + 3600e3);
+          const d = days.get(k) || { d: k, kwh: null, eur: null };
+          if (costIds.includes(id)) d.eur = (d.eur || 0) + row.change;
+          else d.kwh = (d.kwh || 0) + row.change;
+          days.set(k, d);
+        }
+      }
+      const now = new Date();
+      const monthly = await this.source.statistics(ids, new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1) - 2 * 86400e3).toISOString(), 'month', { energy: 'kWh' });
+      const thisMonth = dayKey(Date.now()).slice(0, 7);
+      for (const id of ids) {
+        // The current month is the last period (it may have started before the 1st if the query did).
+        const rows = (monthly && monthly[id]) || [];
+        const row = rows[rows.length - 1];
+        if (!row || typeof row.change !== 'number' || dayKey(ms(row.end) - 3600e3).slice(0, 7) !== thisMonth) continue;
+        if (costIds.includes(id)) month.eur = (month.eur || 0) + row.change;
+        else month.kwh = (month.kwh || 0) + row.change;
+      }
+    }
+    const round = (v, n) => (v === null ? null : Math.round(v * 10 ** n) / 10 ** n);
+    this.blocks.energy = {
+      live,
+      days: [...days.values()].filter((d) => d.kwh !== null).sort((a, b) => (a.d < b.d ? -1 : 1)).slice(-8)
+        .map((d) => ({ d: d.d, kwh: round(d.kwh, 2), eur: round(d.eur, 2) })),
+      month: { kwh: round(month.kwh, 1), eur: round(month.eur, 2) },
+      at: Date.now(),
+    };
+    this.markBlock('energy');
   }
 
   async loadCalendar() {

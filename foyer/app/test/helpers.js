@@ -92,6 +92,10 @@ function makeFakeWs(home, opts = {}) {
           this.result(m.id, null);
           this._emit({ id: m.id, type: 'event', event: { type: m.forecast_type, forecast: [{ datetime: iso(), condition: 'rainy', temperature: 12, templow: 7 }] } });
           break;
+        case 'energy/get_prefs':
+          if (home.energy) this.result(m.id, home.energy.prefs); else this.result(m.id, 'No prefs', false);
+          break;
+        case 'recorder/statistics_during_period': this.result(m.id, home.energy ? home.energy.stats(m) : {}); break;
         case 'todo/item/list': this.result(m.id, { items: [{ summary: 'Pain', uid: '1', status: 'needs_action' }, { summary: 'Lait', uid: '2', status: 'completed' }] }); break;
         case 'call_service':
           calls.push(m);

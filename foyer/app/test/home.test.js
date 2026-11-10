@@ -174,3 +174,51 @@ test('a HomePod and its Music Assistant twin are one speaker: Apple Music goes t
   assert.deepStrictEqual(call.service_data, { search_query: 'clair' });
   assert.strictEqual(call.return_response, true);
 });
+
+test('energy: what Linky sent for the last days and this month, and live power from a whole-home meter', async (t) => {
+  const home = realisticHome();
+  const day = 86400e3;
+  const midnight = (n) => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime() - n * day; };
+  home.energy = {
+    prefs: { energy_sources: [{ type: 'grid', stat_energy_from: 'linky:1424', stat_cost: 'linky:1424_cost' }] },
+    stats: (m) => {
+      const out = {};
+      for (const id of m.statistic_ids) {
+        const cost = id.endsWith('_cost');
+        if (m.period === 'month') out[id] = [{ start: midnight(40) / 1000, end: midnight(10) / 1000, change: 99 }, { start: midnight(10) / 1000, end: Date.now() / 1000, change: cost ? 6.2 : 31.4 }];
+        else out[id] = [3, 2, 1].map((n) => ({ start: midnight(n) / 1000, end: midnight(n - 1) / 1000, change: cost ? 0.5 + n / 10 : 2500 + n * 100 }));
+      }
+      return out;
+    },
+  };
+  home.states.push(
+    st('sensor.prise_tv_power', 'power', { device_class: 'power', unit_of_measurement: 'W', friendly_name: 'Prise TV Puissance' }),
+    st('sensor.zlinky_puissance_apparente', '850', { device_class: 'power', unit_of_measurement: 'W', friendly_name: 'ZLinky Puissance' }),
+  );
+  home.entities.push(
+    { entity_id: 'sensor.prise_tv_power', device_id: null, area_id: 'salon', entity_category: null, hidden_by: null, disabled_by: null, labels: [] },
+    { entity_id: 'sensor.zlinky_puissance_apparente', device_id: null, area_id: null, entity_category: null, hidden_by: null, disabled_by: null, labels: [] },
+  );
+  const { model, FakeWS } = connect(home);
+  t.after(() => model.stop());
+  model.start();
+  await until(() => model.ready && model.blocks.energy);
+
+  const en = model.snapshot().blocks.energy;
+  assert.strictEqual(en.live, 'sensor.zlinky_puissance_apparente', 'the meter, not a smart plug');
+  assert.strictEqual(en.days.length, 3);
+  assert.deepStrictEqual(en.days[2], { d: en.days[2].d, kwh: 2600, eur: 0.6 });
+  assert.strictEqual(en.month.kwh, 31.4, 'this month is the last period');
+  assert.strictEqual(en.month.eur, 6.2);
+  const q = FakeWS.instances[0].sent.find((m) => m.type === 'recorder/statistics_during_period' && m.period === 'day');
+  assert.deepStrictEqual(q.statistic_ids, ['linky:1424', 'linky:1424_cost']);
+  assert.deepStrictEqual(q.units, { energy: 'kWh' });
+
+  // No Energy dashboard and no meter: no energy at all.
+  const bare = connect(realisticHome());
+  t.after(() => bare.model.stop());
+  bare.model.start();
+  await until(() => bare.model.ready);
+  await bare.model.loadEnergy();
+  assert.strictEqual(bare.model.blocks.energy, null);
+});

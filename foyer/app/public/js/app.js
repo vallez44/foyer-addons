@@ -650,6 +650,7 @@
         applyLang();
         var s = F.settings();
         F.cls(doc.body, 'flat', s.style === 'flat');
+        F.cls(doc.body, 'frosted', s.style === 'frosted');
         P.build();
       }
       for (var i = 0; i < P.faces.length; i++) P.faces[i].update(changed, blocks, full);
@@ -665,6 +666,7 @@
     });
     for (var i = 0; i < P.faces.length; i++) P.faces[i].update({}, {}, true);
     F.cls(doc.body, 'flat', F.settings().style === 'flat');
+    F.cls(doc.body, 'frosted', F.settings().style === 'frosted');
     updatePill();
 
     var resizeTimer = null;

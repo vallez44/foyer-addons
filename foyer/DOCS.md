@@ -225,6 +225,34 @@ actions:
               continue_on_error: true
 ```
 
+## Alarme
+
+Foyer suit les alarmes de Home Assistant (**Alarmo** conseillé, ou un panneau « manual ») :
+
+- **Armement** : une carte en bas de l'écran montre le compte à rebours de sortie (*Armement de l'alarme ·
+  0:42*), avec **Annuler** (code si l'alarme en demande un) et **Masquer**.
+- **Entrée** : l'écran passe en plein écran avec le compte à rebours d'entrée et le **clavier du code** ; l'iPad
+  émet un bip par seconde.
+- **Déclenchement** : plein écran rouge, **sirène sur l'iPad** et clavier pour désarmer. *Couper le son sur cet
+  écran* ne fait taire que cet iPad. **Réglages → Alarme → Sirène sur les iPad** l'éteint quand une vraie sirène
+  prend le relais. Safari ne joue un son qu'après un premier toucher de l'écran depuis le dernier chargement de
+  Foyer, et le volume de l'iPad doit être monté.
+- **Code** : une alarme qui demande son code le vérifie elle-même ; le clavier de l'iPad peut donc la désarmer
+  même quand *Serrures, alarme et garage depuis Home Assistant uniquement* est activé. Sans code, ce réglage
+  réserve le désarmement à Home Assistant.
+
+Les délais (1 minute pour sortir, par exemple), les capteurs, les codes par personne, les notifications, les
+lampes qui clignotent, la sirène et les caméras se règlent dans Home Assistant : dans Alarmo et par des
+automatisations. Le **NFC** passe par l'iPhone (app Home Assistant, *Étiquettes NFC*) : l'iPad n'a pas de lecteur NFC.
+
+## Énergie
+
+La tuile **Énergie** (*Personnaliser → + → Énergie*) reprend la source « réseau » du tableau de bord Énergie de
+Home Assistant (l'application Linky par exemple) : la consommation et le coût de la veille, le total du mois et
+les 7 derniers jours en barres. Linky ne donne que la veille. Pour la **puissance en direct**, il faut un lecteur
+sur la prise TIC du compteur (un ZLinky en Zigbee, par exemple) : dès qu'un capteur de puissance du compteur
+existe dans Home Assistant, la tuile affiche *En direct* tout seul.
+
 ## Tablette Android
 
 Foyer est une page web : il fonctionne aussi sur une tablette Android, avec **Chrome** ou, pour un écran mural,

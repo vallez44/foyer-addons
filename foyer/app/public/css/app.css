@@ -55,25 +55,34 @@ html, body {
 /* ---------------------------------------------------------------- glass tiles */
 .tile {
   position: absolute; overflow: hidden; color: #fff; box-sizing: border-box;
-  /* Liquid glass: a tinted, blurred pane, lighter at the top, with a bright rim and a soft reflection. */
-  background-color: rgba(255, 255, 255, .14);
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, .22) 0%, rgba(255, 255, 255, .07) 52%, rgba(255, 255, 255, .03) 100%);
-  -webkit-backdrop-filter: blur(30px) saturate(185%) brightness(1.04); backdrop-filter: blur(30px) saturate(185%) brightness(1.04);
-  box-shadow: inset 0 -16px 28px -20px rgba(90, 25, 0, .35), 0 14px 34px rgba(95, 30, 0, .18), 0 2px 6px rgba(95, 30, 0, .08);
+  /* Liquid glass, clear: the wallpaper shows through, barely blurred; a bright rim and a soft reflection. */
+  background-color: rgba(255, 255, 255, .07);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, .17) 0%, rgba(255, 255, 255, .05) 42%, rgba(255, 255, 255, 0) 100%);
+  -webkit-backdrop-filter: blur(7px) saturate(170%) brightness(1.06); backdrop-filter: blur(7px) saturate(170%) brightness(1.06);
+  box-shadow: 0 12px 30px rgba(80, 25, 0, .14), 0 1px 3px rgba(80, 25, 0, .08);
   -webkit-transition: -webkit-transform .18s ease, background-color .35s ease, color .35s ease;
   transition: transform .18s ease, background-color .35s ease, color .35s ease;
 }
 /* The reflection: a soft highlight across the top-left of the glass. */
 .tile:before {
   content: ""; position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: inherit; pointer-events: none;
-  background: radial-gradient(130% 75% at 12% -8%, rgba(255, 255, 255, .42) 0%, rgba(255, 255, 255, .1) 38%, rgba(255, 255, 255, 0) 62%);
+  background: radial-gradient(120% 70% at 10% -10%, rgba(255, 255, 255, .3) 0%, rgba(255, 255, 255, .06) 40%, rgba(255, 255, 255, 0) 62%);
 }
-/* The rim: bright along the top-left edge, fading, catching light again bottom-right. */
+/* The rim: bright along the top-left edge, still visible all around, catching light again bottom-right. */
 .tile:after {
-  content: ""; position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: inherit; pointer-events: none; padding: 1.5px;
-  background: linear-gradient(145deg, rgba(255, 255, 255, .95) 0%, rgba(255, 255, 255, .35) 18%, rgba(255, 255, 255, .06) 45%, rgba(255, 255, 255, .02) 70%, rgba(255, 255, 255, .4) 100%);
+  content: ""; position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: inherit; pointer-events: none; padding: 1.3px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, .9) 0%, rgba(255, 255, 255, .42) 22%, rgba(255, 255, 255, .2) 50%, rgba(255, 255, 255, .24) 75%, rgba(255, 255, 255, .6) 100%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+.tile .t-name, .tile .t-sub { text-shadow: 0 1px 3px rgba(70, 25, 0, .22); }
+.tile.on .t-name, .tile.on .t-sub { text-shadow: none; }
+/* Frosted glass (the previous look): more blur, more tint. */
+.frosted .tile {
+  background-color: rgba(255, 255, 255, .14);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, .22) 0%, rgba(255, 255, 255, .07) 52%, rgba(255, 255, 255, .03) 100%);
+  -webkit-backdrop-filter: blur(30px) saturate(185%) brightness(1.04); backdrop-filter: blur(30px) saturate(185%) brightness(1.04);
+  box-shadow: inset 0 -16px 28px -20px rgba(90, 25, 0, .35), 0 14px 34px rgba(95, 30, 0, .18), 0 2px 6px rgba(95, 30, 0, .08);
 }
 .flat .tile, .classic .tile { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: rgba(255, 255, 255, .22); background-image: none; }
 .classic .tile:after, .classic .tile:before { display: none; }
@@ -99,12 +108,12 @@ html, body {
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 
 .t-col { position: absolute; left: 0; right: 0; top: 50%; -webkit-transform: translateY(-50%); transform: translateY(-50%); text-align: center; padding: 0 9%; }
-.t-icon { display: block; width: 2.75em; height: 2.75em; margin: 0 auto .42em; position: relative; }
-.t-name { font-weight: 600; font-size: 1.18em; line-height: 1.15; max-height: 2.3em; overflow: hidden; letter-spacing: -.012em; }
+.t-icon { display: block; width: 3.05em; height: 3.05em; margin: 0 auto .36em; position: relative; stroke: currentColor; stroke-width: .5px; stroke-linejoin: round; stroke-linecap: round; }
+.t-name { font-weight: 700; font-size: 1.2em; line-height: 1.15; max-height: 2.3em; overflow: hidden; letter-spacing: -.012em; }
 .t-sub { font-size: 1em; line-height: 1.25; margin-top: .16em; color: rgba(255, 255, 255, .74); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tile.on .t-sub { color: rgba(28, 28, 30, .58); }
 .tile.alert .t-sub { color: rgba(255, 255, 255, .85); }
-.tile.on .t-icon { fill: #1c1c1e; }
+.tile.on .t-icon { fill: #1c1c1e; color: #1c1c1e; }
 .size-W .t-col { padding: 0 6%; }
 
 .t-level { position: absolute; left: 0; top: 0; right: 0; bottom: 0; opacity: 0; pointer-events: none; background: rgba(40, 20, 0, .28); -webkit-transition: opacity .25s; transition: opacity .25s; }
@@ -777,3 +786,57 @@ body.pairing { background: #ef7a14; background-image: linear-gradient(152deg, #f
 .wc-day { margin-top: 2px; font-size: 14px; color: rgba(255, 255, 255, .55); }
 .wc-time { font-size: 46px; font-weight: 300; }
 .st-nav::-webkit-scrollbar, .st-main::-webkit-scrollbar, .sheet::-webkit-scrollbar, .st-menu::-webkit-scrollbar { display: none; }
+
+/* ---------------------------------------------------------------- alarm on the wall iPad */
+.al { position: fixed; z-index: 70; left: 0; right: 0; bottom: 0; opacity: 0; -webkit-transition: opacity .3s ease; transition: opacity .3s ease; pointer-events: none; }
+.al.show { opacity: 1; }
+.al .al-card { pointer-events: auto; }
+.al-arming { padding: 0 20px 28px; text-align: center; }
+.al-arming .al-card { display: inline-block; min-width: 340px; max-width: 520px; padding: 18px 22px 16px; border-radius: 30px; color: #fff; text-align: left;
+  background: rgba(30, 30, 34, .55); -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22), 0 18px 40px rgba(0, 0, 0, .25); }
+.al-full { top: 0; pointer-events: auto; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center;
+  background: rgba(120, 60, 0, .55); -webkit-backdrop-filter: blur(26px) saturate(150%); backdrop-filter: blur(26px) saturate(150%); }
+.al-triggered { background: rgba(190, 20, 20, .72); -webkit-animation: alPulse 1.2s ease-in-out infinite; animation: alPulse 1.2s ease-in-out infinite; }
+@-webkit-keyframes alPulse { 0%, 100% { background-color: rgba(190, 20, 20, .72); } 50% { background-color: rgba(120, 0, 0, .82); } }
+@keyframes alPulse { 0%, 100% { background-color: rgba(190, 20, 20, .72); } 50% { background-color: rgba(120, 0, 0, .82); } }
+.al-full .al-card { width: 420px; max-width: 92vw; text-align: center; color: #fff; }
+.al-head { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+.al-full .al-head { -webkit-flex-direction: column; flex-direction: column; }
+.al-ic { width: 34px; height: 34px; -webkit-flex: none; flex: none; fill: #fff; margin-right: 14px; }
+.al-full .al-ic { width: 76px; height: 76px; margin: 0 0 10px; }
+.al-title { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+.al-full .al-title { font-size: 34px; }
+.al-sub { font-size: 15px; color: rgba(255, 255, 255, .72); margin-top: 2px; }
+.al-full .al-sub { font-size: 18px; margin-top: 6px; }
+.al-count { font-size: 46px; font-weight: 300; font-variant-numeric: tabular-nums; letter-spacing: .02em; margin: 6px 0 4px; }
+.al-full .al-count { font-size: 84px; font-weight: 200; margin: 8px 0 0; }
+.al-count:empty { display: none; }
+.al .btn-row { -webkit-justify-content: flex-start; justify-content: flex-start; margin-top: 10px; }
+.al-full .btn-row { -webkit-justify-content: center; justify-content: center; }
+.al .keypad { margin-top: 14px; }
+.al .kp-key { background: rgba(255, 255, 255, .2); color: #fff; }
+.al .kp-ok { background: #fff; color: #b91c1c; }
+.al-mute { margin-top: 18px; }
+.al .hidden { display: none; }
+
+/* ---------------------------------------------------------------- energy */
+.tile-energy .en-head { position: absolute; left: 8%; top: 9%; right: 8%; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; font-weight: 600; font-size: .9em; }
+.tile-energy .en-ic { width: 1.25em; height: 1.25em; margin-right: .3em; fill: #ffd60a; stroke: none; }
+.tile-energy .en-big { position: absolute; left: 8%; top: 27%; font-size: 2.3em; font-weight: 400; letter-spacing: -.01em; white-space: nowrap; }
+.tile-energy .en-sub { position: absolute; left: 8%; right: 8%; bottom: 10%; font-size: .82em; color: rgba(255, 255, 255, .78); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile-energy .en-bars { display: none; position: absolute; right: 7%; top: 14%; bottom: 26%; width: 42%; -webkit-align-items: flex-end; align-items: flex-end; -webkit-justify-content: space-between; justify-content: space-between; }
+.tile-energy.size-W .en-bars, .tile-energy.size-M .en-bars, .tile-energy.size-L .en-bars, .tile-energy.size-XL .en-bars { display: -webkit-flex; display: flex; }
+.tile-energy.size-M .en-bars, .tile-energy.size-L .en-bars, .tile-energy.size-XL .en-bars { left: 8%; right: 8%; width: auto; top: 52%; bottom: 24%; }
+.tile-energy.size-M .en-sub, .tile-energy.size-L .en-sub, .tile-energy.size-XL .en-sub { bottom: 7%; }
+.en-col { position: relative; height: 100%; -webkit-flex: 1; flex: 1; margin: 0 2px; }
+.en-bar { position: absolute; left: 18%; right: 18%; bottom: 1.1em; border-radius: 4px; background: rgba(255, 255, 255, .42); max-height: calc(100% - 1.1em); }
+.en-col.last .en-bar { background: #fff; }
+.en-day { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-size: .62em; color: rgba(255, 255, 255, .7); }
+.en-list { overflow: hidden; border-radius: 20px; background: rgba(255, 255, 255, .07); }
+.en-row { display: -webkit-flex; display: flex; -webkit-justify-content: space-between; justify-content: space-between; padding: 14px 18px; font-size: 17px; }
+.en-row + .en-row { border-top: .5px solid rgba(255, 255, 255, .14); }
+.en-row-v { color: rgba(255, 255, 255, .75); font-variant-numeric: tabular-nums; }
+.en-total { font-weight: 600; }
+.en-total .en-row-v { color: #fff; }
+.sheet-note { margin: 16px 6px 0; font-size: 14px; line-height: 1.4; color: rgba(255, 255, 255, .6); }

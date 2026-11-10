@@ -71,7 +71,8 @@ const LAYOUT_ONLY = new Set(['script', 'button', 'input_button']);
 function isSensitive(domain, service, st) {
   const dc = st && st.attributes && st.attributes.device_class;
   if (domain === 'lock') return service === 'unlock' || service === 'open';
-  if (domain === 'alarm_control_panel') return service === 'alarm_disarm';
+  // An alarm that asks for its code checks it itself: the keypad on the wall iPad may disarm it.
+  if (domain === 'alarm_control_panel') return service === 'alarm_disarm' && !(st && st.attributes && st.attributes.code_format);
   if (domain === 'cover' && ['garage', 'gate', 'door'].includes(dc)) {
     return service === 'open_cover' || service === 'toggle' || service === 'set_cover_position';
   }
