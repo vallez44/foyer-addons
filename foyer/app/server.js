@@ -47,6 +47,7 @@ function createApp(cfg, deps = {}) {
       photoInterval: s.photoInterval, returnAfter: s.returnAfter, speaker: s.speaker, lang: s.lang,
       thermostatEntity: s.thermostatEntity, weatherEntity: s.weatherEntity, calendars: s.calendars,
       defaultCalendar: s.defaultCalendar, apps: s.apps, sensitiveFromHaOnly: s.sensitiveFromHaOnly || cfg.sensitiveFromHaOnly,
+      alarmSiren: s.alarmSiren !== false, wallpaperV: s.wallpaperV || null,
     };
   }
 
@@ -372,6 +373,22 @@ function createApp(cfg, deps = {}) {
     }
 
     // Photos can be added from any screen (they stay in /media/foyer/photos).
+    // Your own wallpaper, from any screen of the home (like the photos).
+    if (p === '/api/wallpaper' && m === 'POST') {
+      const buf = await readBody(req, 20 * 1024 * 1024, false);
+      const prev = store.settings;
+      const v = photos.setWallpaper(buf);
+      store.setSettings(sanitizeSettings({ wallpaper: 'custom', wallpaperV: v }, prev));
+      applySettings(prev);
+      return sendJson(req, res, 200, { ok: true, wallpaper: 'custom', wallpaperV: v });
+    }
+    if (p === '/wallpaper' && m === 'GET') {
+      const f = photos.wallpaperFile();
+      if (!f) return send(req, res, 404, 'Not found');
+      return fs.readFile(f.path, (err, buf) => (err ? send(req, res, 404, 'Not found')
+        : send(req, res, 200, buf, f.type, { 'Cache-Control': 'private, max-age=31536000, immutable' })));
+    }
+
     if (p === '/api/photos' && m === 'POST') {
       const buf = await readBody(req, 20 * 1024 * 1024, false);
       const item = photos.add(buf, { w: parseInt(url.searchParams.get('w'), 10), h: parseInt(url.searchParams.get('h'), 10) });

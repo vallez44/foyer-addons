@@ -13,7 +13,10 @@ function request(port, method, urlPath, { body, headers = {}, cookie } = {}) {
     const h = { Host: `localhost:${port}`, ...headers };
     if (cookie) h.Cookie = cookie;
     let payload;
-    if (body !== undefined) {
+    if (Buffer.isBuffer(body)) {
+      payload = body;
+      h['Content-Length'] = payload.length;
+    } else if (body !== undefined) {
       payload = Buffer.from(JSON.stringify(body));
       h['Content-Type'] = 'application/json';
       h['Content-Length'] = payload.length;
@@ -208,4 +211,30 @@ test('screens: their own preferences, music on the speakers, calendar and remind
   const evil = await request(port, 'GET', `/manifest.webmanifest?start=${encodeURIComponent('//evil.example.com/')}`);
   assert.strictEqual(evil.json.start_url, './', 'start stays on this server');
   for (const icon of man.json.icons) assert.strictEqual((await request(port, 'GET', `/${icon.src}`)).status, 200);
+});
+
+test('screens: your own wallpaper, kept at home and shown on every screen', async (t) => {
+  const { app, port } = await startApp({ mode: 'standalone', isAddon: false });
+  t.after(() => app.stop());
+  const H = { 'X-Foyer': '1' };
+  const first = await request(port, 'POST', '/api/pair', { body: { code: app.pairing.createCode('log').display }, headers: H });
+  const cookie = first.headers['set-cookie'][0].split(';')[0];
+  assert.strictEqual(app.home.extraBlocks.settings.alarmSiren, true, 'the screens know whether to sound the siren');
+
+  const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(64, 1)]);
+  const up = await request(port, 'POST', '/api/wallpaper', { body: jpeg, headers: { ...H, 'Content-Type': 'image/jpeg' }, cookie });
+  assert.strictEqual(up.status, 200);
+  assert.strictEqual(app.home.extraBlocks.settings.wallpaper, 'custom');
+  assert.strictEqual(app.home.extraBlocks.settings.wallpaperV, up.json.wallpaperV);
+  const pic = await request(port, 'GET', `/wallpaper?v=${up.json.wallpaperV}`, { cookie });
+  assert.strictEqual(pic.status, 200);
+  assert.strictEqual(pic.headers['content-type'], 'image/jpeg');
+  assert.strictEqual((await request(port, 'GET', '/wallpaper')).status, 401, 'only for the screens of the home');
+  assert.strictEqual((await request(port, 'POST', '/api/wallpaper', { body: Buffer.from('not a picture'), headers: H, cookie })).status, 415);
+
+  // Back to a colour, then to your picture again.
+  await request(port, 'PUT', '/api/arrange', { body: { wallpaper: 'ocean' }, headers: H, cookie });
+  assert.strictEqual(app.home.extraBlocks.settings.wallpaper, 'ocean');
+  await request(port, 'PUT', '/api/arrange', { body: { wallpaper: 'custom' }, headers: H, cookie });
+  assert.strictEqual(app.home.extraBlocks.settings.wallpaper, 'custom');
 });

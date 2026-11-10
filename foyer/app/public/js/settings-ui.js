@@ -560,11 +560,13 @@
     next();
   }
 
-  function resize(file, cb) {
+  function resize(file, cb) { F.resizeImage(file, 2048, cb); }
+
+  /** A picture from the iPad, made smaller as a JPEG (the photos, the wallpaper). */
+  F.resizeImage = function (file, max, cb) {
     var url = (w.URL || w.webkitURL).createObjectURL(file);
     var img = new w.Image();
     img.onload = function () {
-      var max = 2048;
       var scale = Math.min(1, max / Math.max(img.width, img.height));
       var cw = Math.round(img.width * scale);
       var ch = Math.round(img.height * scale);
@@ -581,7 +583,52 @@
     };
     img.onerror = function () { cb(null); };
     img.src = url;
-  }
+  };
+
+  /** Your own picture as the wallpaper of every screen (sharp enough for the largest iPad). */
+  F.pickWallpaper = function (done) {
+    var input = doc.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+    doc.body.appendChild(input);
+    input.addEventListener('change', function () {
+      var file = input.files && input.files[0];
+      if (input.parentNode) input.parentNode.removeChild(input);
+      if (!file) return;
+      F.toast(T('Envoi du fond d\'écran…', 'Sending the wallpaper…'));
+      F.resizeImage(file, 2732, function (buf) {
+        if (!buf) {
+          F.toast(T('Image illisible', 'Unreadable picture'));
+          return;
+        }
+        var x = new w.XMLHttpRequest();
+        x.open('POST', 'api/wallpaper', true);
+        x.setRequestHeader('X-Foyer', '1');
+        x.setRequestHeader('Content-Type', 'image/jpeg');
+        x.onreadystatechange = function () {
+          if (x.readyState !== 4) return;
+          var ok = x.status === 200;
+          if (ok) {
+            try {
+              var r = JSON.parse(x.responseText);
+              var s = F.settings();
+              s.wallpaper = 'custom';
+              s.wallpaperV = r.wallpaperV;
+            } catch (e) { /* the settings arrive anyway */ }
+          }
+          F.toast(ok ? T('Fond d\'écran changé', 'Wallpaper changed') : T('Envoi impossible', 'Could not send it'));
+          if (done) done(ok);
+        };
+        x.send(buf);
+      });
+    }, false);
+    input.click();
+  };
+  F.wallpaperUrl = function () {
+    var s = F.settings();
+    return s.wallpaperV ? 'wallpaper?v=' + s.wallpaperV : null;
+  };
 
   PAGES.display = function (body) {
     var st = s();
@@ -595,6 +642,15 @@
         F.onTap(sw, function () { save({ wallpaper: wid }); });
       }(id));
     }
+    if (F.wallpaperUrl()) {
+      var mine = F.el('div', 'st-swatch st-swatch-photo' + (st.wallpaper === 'custom' ? ' sel' : ''), r);
+      F.setBg(mine, F.wallpaperUrl());
+      F.onTap(mine, function () { save({ wallpaper: 'custom' }); });
+    }
+    var add = F.el('div', 'st-swatch st-swatch-add', r);
+    icon('image-plus', '', add);
+    F.onTap(add, function () { F.pickWallpaper(function (ok) { if (ok) UI.go('display'); }); });
+    F.el('div', 'st-foot', c, T('Le + choisit une de vos photos comme fond d\'écran, pour tous les écrans.', 'The + picks one of your photos as the wallpaper, for every screen.'));
     var c2 = group(body, null, T('Le verre dépoli demande un iPad récent ; le style plat convient aux anciens iPad.', 'Frosted glass needs a recent iPad; Flat suits older iPads.'));
     segmented(c2, T('Style', 'Style'), [{ label: T('Verre', 'Glass'), value: 'glass' }, { label: T('Dépoli', 'Frosted'), value: 'frosted' }, { label: T('Plat', 'Flat'), value: 'flat' }], st.style || 'glass', function (v) { save({ style: v }); });
     var c3 = group(body, T('Cet écran', 'This Screen'));

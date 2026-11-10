@@ -45,6 +45,7 @@
   // ------------------------------------------------------------------ the two tile faces
   function wallpaperClass(f) {
     var s = F.settings();
+    if (s.wallpaper === 'custom' && s.wallpaperV) return 'wall wall-custom';
     return 'wall wall-' + (s.wallpaper || 'amber');
   }
 
@@ -55,7 +56,7 @@
 
   F.gridSig = function (f, specs) {
     var s = F.settings();
-    return JSON.stringify(specs) + '|' + f.w + 'x' + f.h + '|' + (s.wallpaper || '') + '|' + (F.safeTop || 0);
+    return JSON.stringify(specs) + '|' + f.w + 'x' + f.h + '|' + (s.wallpaper || '') + (s.wallpaperV || '') + '|' + (F.safeTop || 0);
   };
 
   /** Pixel boxes for tiles in order: boxes[i] is null when tile i does not fit on the screen. */
@@ -86,6 +87,10 @@
   /** The big dial of the wallpaper sits behind the clock (or the first tile). */
   F.placeWall = function (f, specs, boxes) {
     f.wall.className = wallpaperClass(f);
+    var s = F.settings();
+    var pic = s.wallpaper === 'custom' && s.wallpaperV ? 'url("wallpaper?v=' + s.wallpaperV + '")' : '';
+    if (f.wall.style.backgroundImage !== pic) f.wall.style.backgroundImage = pic;
+    F.cls(w.document.body, 'wall-photo', Boolean(pic));
     var anchor = null;
     for (var i = 0; i < specs.length; i++) {
       if (boxes[i] && specs[i].type === 'clock') {

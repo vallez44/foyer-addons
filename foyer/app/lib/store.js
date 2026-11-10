@@ -28,6 +28,7 @@ function defaultSettings() {
     apps: { apple: { music: true }, hidden: {} },
     defaultCalendar: null,
     alarmSiren: true,
+    wallpaperV: null,
   };
 }
 
@@ -81,7 +82,9 @@ function sanitizeSettings(input, current) {
       s.layouts[face] = Array.isArray(l) ? l.map(cleanTile).filter(Boolean).slice(0, 40) : null;
     }
   }
-  if (WALLPAPERS.includes(input.wallpaper)) s.wallpaper = input.wallpaper;
+  if (WALLPAPERS.includes(input.wallpaper) || input.wallpaper === 'custom') s.wallpaper = input.wallpaper;
+  if (input.wallpaperV === null || (typeof input.wallpaperV === 'string' && /^[0-9a-f]{4,16}$/.test(input.wallpaperV))) s.wallpaperV = input.wallpaperV;
+  if (s.wallpaper === 'custom' && !s.wallpaperV) s.wallpaper = 'amber';
   if (['glass', 'frosted', 'flat'].includes(input.style)) s.style = input.style;
   if (input.night && typeof input.night === 'object') {
     const n = input.night;

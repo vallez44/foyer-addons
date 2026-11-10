@@ -54,6 +54,29 @@ class Photos {
     return item;
   }
 
+  /** Your own wallpaper (one at a time), kept next to the photos so it stays out of the slideshow. */
+  setWallpaper(buf) {
+    let ext = null;
+    if (isJpeg(buf)) ext = 'jpg';
+    else if (isPng(buf)) ext = 'png';
+    if (!ext) throw Object.assign(new Error('only JPEG or PNG pictures'), { status: 415 });
+    const dir = path.dirname(this.dir);
+    for (const old of ['wallpaper.jpg', 'wallpaper.png']) {
+      try { fs.unlinkSync(path.join(dir, old)); } catch (e) { /* none yet */ }
+    }
+    fs.writeFileSync(path.join(dir, `wallpaper.${ext}`), buf);
+    return randomId(4);
+  }
+
+  wallpaperFile() {
+    const dir = path.dirname(this.dir);
+    for (const [name, type] of [['wallpaper.jpg', 'image/jpeg'], ['wallpaper.png', 'image/png']]) {
+      const f = path.join(dir, name);
+      if (fs.existsSync(f)) return { path: f, type };
+    }
+    return null;
+  }
+
   setMask(id, buf) {
     const p = this.items.find((x) => x.id === id);
     if (!p) throw Object.assign(new Error('unknown photo'), { status: 404 });

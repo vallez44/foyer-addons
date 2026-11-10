@@ -840,3 +840,17 @@ body.pairing { background: #ef7a14; background-image: linear-gradient(152deg, #f
 .en-total { font-weight: 600; }
 .en-total .en-row-v { color: #fff; }
 .sheet-note { margin: 16px 6px 0; font-size: 14px; line-height: 1.4; color: rgba(255, 255, 255, .6); }
+
+/* ---------------------------------------------------------------- your own wallpaper */
+.wall-custom { background-color: #3a3a3c; background-size: cover; background-position: center; }
+.wall-custom .wall-dial, .wall-custom .wall-sweep { display: none; }
+.wall-custom .wall-sheen { opacity: .5; }
+/* A light shade so white text stays readable on any picture. */
+.wall-custom:after { content: ''; position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: linear-gradient(180deg, rgba(0, 0, 0, .06) 0%, rgba(0, 0, 0, .2) 100%); pointer-events: none; }
+.st-swatch-photo, .wp-swatch-photo { background-size: cover; background-position: center; }
+.st-swatch-add, .wp-swatch-add { display: -webkit-inline-flex; display: inline-flex; vertical-align: top; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; background: rgba(127, 127, 127, .22); }
+.st-swatch-add .ic, .wp-swatch-add .ic { width: 26px; height: 26px; fill: currentColor; opacity: .8; }
+/* On a photo, the clear glass takes a light smoky tint so white text stays readable over bright skies. */
+.wall-photo .tile:not(.on):not(.alert) { background-color: rgba(28, 28, 32, .16); }
+.wall-photo .tile .t-name, .wall-photo .tile .t-sub { text-shadow: 0 1px 4px rgba(0, 0, 0, .35); }
+.wall-photo .tile.on .t-name, .wall-photo .tile.on .t-sub { text-shadow: none; }

@@ -100,6 +100,11 @@ La disposition des tuiles se règle directement sur l'écran (partie précédent
 Home Assistant : donnez une pièce à vos appareils (Paramètres → Pièces). Les entités masquées, de configuration ou
 de diagnostic sont laissées de côté, comme celles qui portent l'étiquette **Masquer dans Foyer**.
 
+**Fond d'écran.** *Réglages → Affichage et nuit → Fond d'écran* (ou *Personnaliser* en modifiant un cadran) :
+cinq couleurs, ou **+** pour choisir une de vos photos. Elle est réduite sur l'iPad puis gardée chez vous
+(`/media/foyer/wallpaper.jpg`), et sert de fond à tous les écrans. Sur une photo, le verre des tuiles prend une
+légère teinte fumée pour que le texte reste lisible.
+
 ## Apps
 
 Balayez vers le haut depuis le bas d'un cadran (ou Centre de contrôle → **Apps**) : un écran d'accueil s'ouvre.

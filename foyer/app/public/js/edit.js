@@ -669,6 +669,26 @@
         });
       }(id));
     }
+    if (F.wallpaperUrl && F.wallpaperUrl()) {
+      var mine = F.el('div', 'wp-swatch wp-swatch-photo' + (current === 'custom' ? ' sel' : ''), row);
+      F.setBg(mine, F.wallpaperUrl());
+      F.onTap(mine, function () {
+        F.settings().wallpaper = 'custom';
+        if (E.face) E.relayout(false);
+        F.xhr('PUT', 'api/arrange', { wallpaper: 'custom' }, null, 15000);
+        var all = row.childNodes;
+        for (var k = 0; k < all.length; k++) F.cls(all[k], 'sel', all[k] === mine);
+      });
+    }
+    var addWp = F.el('div', 'wp-swatch wp-swatch-add', row);
+    F.icon('image-plus', '', addWp);
+    F.onTap(addWp, function () {
+      F.pickWallpaper(function (ok) {
+        if (!ok) return;
+        sheet.close();
+        if (E.face) E.relayout(false);
+      });
+    });
     var btns = F.el('div', 'btn-row', sheet.body);
     F.button(btns, F.t('back_to_suggestion'), 'refresh', '', function () {
       sheet.close();
