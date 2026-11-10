@@ -114,3 +114,63 @@ test('reconnects after Home Assistant restarts and reloads everything', async (t
   await until(() => model.ready && FakeWS.instances.length === 2, 3000);
   assert.notStrictEqual(model.epoch, epoch, 'clients are told to reload');
 });
+
+test('a HomePod and its Music Assistant twin are one speaker: Apple Music goes to the twin, the buttons to what plays', async (t) => {
+  const home = realisticHome();
+  home.devices.push({ id: 'hp', area_id: 'salon', name: 'Compote', model: 'HomePod' }, { id: 'hpma', area_id: null, name: 'Compote', model: 'HomePod' });
+  home.entities.push(
+    { entity_id: 'media_player.compote_compote', device_id: 'hp', area_id: null, entity_category: null, hidden_by: null, disabled_by: null, labels: [], platform: 'apple_tv', unique_id: 'AA:BB:CC:00:11:22' },
+    { entity_id: 'media_player.compote', device_id: 'hpma', area_id: null, entity_category: null, hidden_by: null, disabled_by: null, labels: [], platform: 'music_assistant', unique_id: 'apaabbcc001122' },
+    { entity_id: 'media_player.mac_mini', device_id: null, area_id: null, entity_category: null, hidden_by: null, disabled_by: null, labels: [], platform: 'music_assistant', unique_id: 'ap0011aabbccdd' },
+  );
+  home.states.push(
+    st('media_player.compote_compote', 'idle', { friendly_name: 'Compote', volume_level: 0.3, supported_features: 21437 }),
+    st('media_player.compote', 'idle', { friendly_name: 'Compote', volume_level: 0.2, supported_features: 8320575, mass_player_type: 'player' }),
+    st('media_player.mac_mini', 'unavailable', { friendly_name: 'Mac mini', supported_features: 8320575 }),
+  );
+  const { model, conn, FakeWS } = connect(home);
+  t.after(() => model.stop());
+  model.start();
+  await until(() => model.ready);
+
+  const ids = model.eligibleIds();
+  assert.ok(ids.includes('media_player.compote_compote'), 'the HomePod stays, in its room');
+  assert.ok(!ids.includes('media_player.compote'), 'its Music Assistant twin hides behind it');
+  assert.ok(ids.includes('media_player.mac_mini'), 'a Music Assistant player without twin stays itself');
+  let c = model.compact('media_player.compote_compote');
+  assert.strictEqual(c.a, 'salon');
+  assert.strictEqual(c.at.ma, true, 'it can play Apple Music now');
+  assert.ok(c.at.supported_features & 4194304, 'and search');
+  assert.strictEqual(model.homeInfo().caps.musicAssistant, true);
+  assert.strictEqual(model.mediaTarget('media_player.compote_compote', 'play_media'), 'media_player.compote');
+  assert.strictEqual(model.mediaTarget('media_player.compote_compote', 'media_play_pause'), 'media_player.compote_compote', 'nothing plays: the HomePod itself');
+
+  // Music Assistant plays: the speaker shows it and its buttons go there.
+  const v = model.v;
+  FakeWS.instances[0].fireState('media_player.compote', st('media_player.compote', 'playing', { friendly_name: 'Compote', media_title: 'Clair de lune', media_artist: 'Debussy', entity_picture: '/api/media_player_proxy/media_player.compote?token=X', supported_features: 8320575 }));
+  await until(() => model.v > v && model.compact('media_player.compote_compote').s === 'playing');
+  c = model.compact('media_player.compote_compote');
+  assert.strictEqual(c.at.media_title, 'Clair de lune');
+  assert.strictEqual(c.n, 'Compote');
+  assert.ok(/^api\/art\/media_player\.compote_compote\?c=/.test(c.at.pic), 'its artwork goes through the speaker');
+  assert.strictEqual(model.mediaTarget('media_player.compote_compote', 'media_pause'), 'media_player.compote');
+  assert.strictEqual(model.speakerFor('media_player.compote_compote'), 'media_player.compote');
+
+  // Siri plays on the HomePod: the HomePod again.
+  FakeWS.instances[0].fireState('media_player.compote', st('media_player.compote', 'idle', { friendly_name: 'Compote', supported_features: 8320575 }));
+  FakeWS.instances[0].fireState('media_player.compote_compote', st('media_player.compote_compote', 'playing', { friendly_name: 'Compote', media_title: 'Radio', supported_features: 21437 }));
+  await until(() => model.compact('media_player.compote_compote').at.media_title === 'Radio');
+  assert.strictEqual(model.mediaTarget('media_player.compote_compote', 'media_pause'), 'media_player.compote_compote');
+
+  // Music Assistant stopped: the HomePod is on its own again.
+  FakeWS.instances[0].fireState('media_player.compote', st('media_player.compote', 'unavailable', { friendly_name: 'Compote' }));
+  await until(() => model.libraryFor('media_player.compote_compote') === 'media_player.compote_compote');
+  assert.ok(!model.compact('media_player.compote_compote').at.ma);
+
+  // Searching Apple Music through Home Assistant.
+  const found = await model.source.searchMedia('media_player.compote', 'clair');
+  assert.strictEqual(found[0].title, 'Clair de lune');
+  const call = FakeWS.calls.find((m) => m.service === 'search_media');
+  assert.deepStrictEqual(call.service_data, { search_query: 'clair' });
+  assert.strictEqual(call.return_response, true);
+});

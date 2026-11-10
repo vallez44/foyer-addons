@@ -120,13 +120,31 @@ multimédia » par HomePod). Foyer les montre dans le Centre de contrôle, sur l
 **Musique** : choisir le HomePod, lecture/pause, morceau précédent/suivant, volume, et **Parcourir** ce que
 Home Assistant sait lui envoyer (radios de Radio Browser, médias locaux…).
 
-**Apple Music.** Apple ne permet pas à Home Assistant de lancer une playlist Apple Music sur un HomePod.
-Deux possibilités :
+**Apple Music sur les HomePod, depuis Foyer : Music Assistant.** Apple ne permet pas à Home Assistant de
+lancer Apple Music sur un HomePod. **Music Assistant** (application de Home Assistant) le fait : il lit
+Apple Music et l'envoie aux HomePod par AirPlay.
 
-- l'**app Musique d'Apple** sur l'iPad (Apps → Musique) : choisissez la sortie AirPlay (le HomePod) dans l'app ;
-  Foyer affiche ensuite le morceau en cours et le pilote ;
-- **Music Assistant** (add-on de Home Assistant) avec les fournisseurs **Apple Music** et **AirPlay** : vos playlists
-  apparaissent alors dans **Parcourir** et se lancent sur les HomePod depuis Foyer.
+1. **Paramètres → Applications → Magasin d'applications → Music Assistant → Installer**, puis **Démarrer** (cochez aussi
+   *Chien de garde* et *Afficher dans la barre latérale*). Home Assistant propose ensuite l'intégration
+   **Music Assistant** : **Configurer**. Vos HomePod y apparaissent tout seuls (fournisseur AirPlay).
+2. **Apple Music** (abonnement nécessaire) : ouvrez Music Assistant **à son adresse directe**
+   `http://<adresse-de-home-assistant>:8095` (Réglages → Musique → *Ouvrir Music Assistant* dans Foyer),
+   **Se connecter avec Home Assistant**, puis **Paramètres → Music sources → + → Apple Music →
+   Authenticate with Apple Music**, et connectez-vous avec votre identifiant Apple. La connexion dure 6 mois.
+   (Depuis la barre latérale de Home Assistant, Apple ne sait pas revenir à Music Assistant : passez bien
+   par le port 8095.)
+3. **Dans l'app Maison** : *Réglages de la maison → Haut-parleurs et TV* → autorisez l'accès à **tout le
+   monde sur ce réseau** (pas seulement aux membres de la maison), sinon Music Assistant ne peut pas jouer
+   sur les HomePod.
+
+Foyer **réunit chaque HomePod et son double Music Assistant** (ils ont la même adresse MAC) : une seule
+enceinte dans sa pièce, qui affiche ce qui joue (Siri, l'iPhone ou Apple Music lancé depuis Foyer). L'app
+**Musique** de Foyer gagne une **recherche** (artistes, morceaux, albums, playlists d'Apple Music et de votre
+bibliothèque) ; touchez une ligne pour l'ouvrir, le bouton rouge pour la lancer. Limites de Music Assistant :
+qualité AAC 256 kbit/s (pas de Lossless ni de Dolby Atmos) et lecture non officielle pour Apple.
+
+Sans Music Assistant, l'**app Musique d'Apple** sur l'iPad (Apps → Musique) reste possible : choisissez la
+sortie AirPlay (le HomePod) dans l'app ; Foyer affiche ensuite le morceau en cours et le pilote.
 
 **Réglages → Musique** choisit l'enceinte par défaut et indique ce qui est disponible.
 
@@ -152,8 +170,12 @@ Maison. On les fait passer par une automatisation de l'app Maison, exécutée pa
      HomeKit (domaine `switch`), et une automatisation qui l'allume toutes les 15 minutes ;
    - une automatisation **Foyer – mesures des HomePod** déclenchée par un **webhook local** (voir le YAML
      ci-dessous ; remplacez l'identifiant par une longue suite de caractères au hasard).
-2. **Dans l'app Maison d'Apple** (iPhone ou iPad) : **Automatisation → + → Un accessoire est contrôlé →
-   Foyer relevé HomePod → S'allume → Suivant**, puis tout en bas **Convertir en raccourci** :
+2. **Dans l'app Maison d'Apple, sur l'iPhone ou l'iPad.** L'adresse du webhook ne se tape pas dans l'app
+   Maison elle-même : elle va dans le **raccourci** de l'automatisation, qui n'apparaît qu'après **Convertir en
+   raccourci**. L'interrupteur *Foyer relevé HomePod* n'est visible dans l'app Maison qu'une fois le pont
+   HomeKit rechargé (Paramètres → Appareils et services → HomeKit Bridge → ⋮ → Recharger).
+   **Automatisation → + → Un accessoire est contrôlé → Foyer relevé HomePod → S'allume → Suivant**, puis tout
+   en bas **Convertir en raccourci** :
    - ajoutez l'action **Obtenir l'état de** (Maison) pour chaque mesure : capteur de température du HomePod de
      la chambre → *Température actuelle*, capteur d'humidité → *Humidité relative actuelle*, et ainsi de suite ;
    - ajoutez **Obtenir le contenu de l'URL** : l'adresse du webhook

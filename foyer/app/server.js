@@ -98,9 +98,13 @@ function createApp(cfg, deps = {}) {
       cls: (x && x.media_class) || null, play: Boolean(x && x.can_play), open: Boolean(x && x.can_expand), thumb: thumb(x && x.thumbnail),
     };
   }
+  // Pictures, cameras and voices have nothing to play on a speaker.
+  const NOT_MUSIC = /^media-source:\/\/(ai_task|camera|image|image_upload|tts|synology_dsm|google_photos|immich|frigate|unifiprotect|reolink|nest|xbox|onvif|motioneye|netatmo)(\/|$)/;
+  const isMusic = (x) => !(x && typeof x.media_content_id === 'string' && NOT_MUSIC.test(x.media_content_id));
   function browseResult(r) {
-    return { ...browseItem(r || {}), children: ((r && r.children) || []).slice(0, 300).map(browseItem) };
+    return { ...browseItem(r || {}), children: ((r && r.children) || []).filter(isMusic).slice(0, 300).map(browseItem) };
   }
+  const SEARCH_MEDIA = 4194304; // MediaPlayerEntityFeature.SEARCH_MEDIA
 
   // ---------------------------------------------------------------- long-poll
   function flushWaiters() {
@@ -389,8 +393,26 @@ function createApp(cfg, deps = {}) {
       if (!/^media_player\.[a-z0-9_]+$/.test(id) || !home.isEligible(id)) return sendJson(req, res, 404, { error: 'unknown speaker' });
       if (!source.browseMedia) return sendJson(req, res, 501, { error: 'browsing is not available' });
       try {
-        const r = await source.browseMedia(id, url.searchParams.get('id') || undefined, url.searchParams.get('type') || undefined);
+        const r = await source.browseMedia(home.libraryFor(id), url.searchParams.get('id') || undefined, url.searchParams.get('type') || undefined);
         return sendJson(req, res, 200, browseResult(r));
+      } catch (e) {
+        return sendJson(req, res, 502, { error: e.message });
+      }
+    }
+
+    if (p === '/api/search' && m === 'GET') {
+      const id = url.searchParams.get('entity_id') || '';
+      const q = (url.searchParams.get('q') || '').trim();
+      if (!/^media_player\.[a-z0-9_]+$/.test(id) || !home.isEligible(id)) return sendJson(req, res, 404, { error: 'unknown speaker' });
+      if (!q || q.length > 100) return sendJson(req, res, 400, { error: 'bad search' });
+      const lib = home.libraryFor(id);
+      const st = home.states.get(lib);
+      if (!source.searchMedia || !st || !((st.attributes && st.attributes.supported_features) & SEARCH_MEDIA)) {
+        return sendJson(req, res, 501, { error: 'this speaker cannot search' });
+      }
+      try {
+        const found = await source.searchMedia(lib, q);
+        return sendJson(req, res, 200, { title: q, children: found.filter(isMusic).slice(0, 100).map(browseItem) });
       } catch (e) {
         return sendJson(req, res, 502, { error: e.message });
       }
@@ -465,7 +487,13 @@ function createApp(cfg, deps = {}) {
         const calls = resolveAction(body, {
           ctx, home, layoutEntities, settings: store.settings, sensitiveFromHaOnly: cfg.sensitiveFromHaOnly,
         });
-        for (const c of calls) await source.callService(c.domain, c.service, c.data, c.target);
+        for (const c of calls) {
+          // A HomePod with a Music Assistant twin: Apple Music goes to the twin, the buttons to the one that plays.
+          if (c.domain === 'media_player' && c.target && typeof c.target.entity_id === 'string') {
+            c.target = { ...c.target, entity_id: home.mediaTarget(c.target.entity_id, c.service) };
+          }
+          await source.callService(c.domain, c.service, c.data, c.target);
+        }
         // A new event does not always change the calendar's state: fetch the events again.
         if (calls.some((c) => c.domain === 'calendar')) setTimeout(() => home.loadCalendar().catch(() => {}), 800);
         return sendJson(req, res, 200, { ok: true, calls: calls.length });
@@ -489,7 +517,7 @@ function createApp(cfg, deps = {}) {
 
     const art = /^\/api\/art\/(media_player\.[a-z0-9_]+)$/.exec(p);
     if (art && m === 'GET') {
-      const st = home.states.get(art[1]);
+      const st = home.states.get(home.speakerFor(art[1]));
       const pic = st && st.attributes && st.attributes.entity_picture;
       if (!home.isEligible(art[1]) || !pic) return send(req, res, 404, 'Not found');
       try {

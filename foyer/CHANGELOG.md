@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.1
+
+- **Apple Music sur les HomePod avec Music Assistant** : Foyer réunit chaque HomePod et son double Music
+  Assistant (même adresse MAC). Une seule enceinte par HomePod, dans sa pièce, qui montre ce qui joue (Siri,
+  l'iPhone ou Foyer) ; Apple Music et la bibliothèque passent par Music Assistant, les boutons vont à ce qui joue.
+- **Recherche dans l'app Musique** (artistes, morceaux, albums, playlists), quand l'enceinte sait chercher.
+  Une ligne s'ouvre, le bouton rouge lance la lecture. Les titres de la bibliothèque sont en français.
+- **Parcourir** ne montre plus les caméras, images et voix de synthèse (rien à jouer sur une enceinte).
+- **Réglages → Musique** : comment relier Apple Music dans Music Assistant, et un lien pour l'ouvrir.
+- Les enceintes indisponibles (Mac, Apple TV pas encore associée) ne s'affichent plus dans l'app Musique.
+
 ## 0.3.0
 
 - **Réglages dans Foyer, comme ceux de l'iPad** : liste à gauche avec icônes de couleur, page à droite, menus

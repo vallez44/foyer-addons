@@ -706,8 +706,15 @@ body.pairing { background: #ef7a14; background-image: linear-gradient(152deg, #f
 .mu-thumb { -webkit-flex: none; flex: none; width: 46px; height: 46px; margin-right: 16px; border-radius: 10px; background-color: rgba(255, 255, 255, .12); background-size: cover; background-position: center; }
 .mu-thumb .ic { width: 26px; height: 26px; margin: 10px; fill: rgba(255, 255, 255, .7); }
 .mu-item-t { -webkit-flex: 1; flex: 1; min-width: 0; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mu-item-play { -webkit-flex: none; flex: none; width: 34px; height: 34px; fill: #ff375f; }
+.mu-item-play { -webkit-flex: none; flex: none; width: 34px; height: 34px; padding: 6px; margin: -6px 0; fill: #ff375f; }
+.mu-item-play.pressed { opacity: .5; }
+.mu-item-play + .mu-item-open { margin-left: 6px; }
 .mu-item-open { -webkit-flex: none; flex: none; width: 24px; height: 24px; fill: rgba(255, 255, 255, .35); }
+.mu-search { position: relative; margin-top: 18px; }
+.mu-search.hidden { display: none; }
+.mu-search .mu-search-in { display: block; width: 100%; padding-left: 46px; }
+.mu-search-in::-webkit-search-decoration { -webkit-appearance: none; }
+.mu-search-ic { position: absolute; left: 14px; top: 13px; width: 24px; height: 24px; fill: rgba(255, 255, 255, .45); pointer-events: none; }
 .mu-wait { padding: 30px; text-align: center; color: rgba(255, 255, 255, .5); }
 .mu-empty { padding: 14px 20px 0; text-align: center; color: rgba(255, 255, 255, .62); }
 .mu-empty.sub { font-size: 14px; color: rgba(255, 255, 255, .5); }

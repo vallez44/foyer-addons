@@ -694,13 +694,20 @@
       }(players[k]));
     }
     var c3 = group(body, T('Sources', 'Sources'), caps.musicAssistant
-      ? T('Music Assistant est connecté : vos playlists Apple Music et vos radios se lancent depuis l\'app Musique de Foyer, sur les HomePod.',
-        'Music Assistant is connected: your Apple Music playlists and radios start from Foyer\'s Music app, on the HomePods.')
+      ? T('Music Assistant est installé : l\'app Musique de Foyer cherche et lance Apple Music sur les HomePod. Pour relier votre compte, ouvrez Music Assistant, puis Paramètres → Music sources → Apple Music, et connectez-vous avec votre identifiant Apple (à refaire tous les 6 mois). Les HomePod doivent accepter AirPlay de « Tout le monde sur ce réseau » (app Maison → Réglages de la maison → Haut-parleurs et TV).',
+        'Music Assistant is installed: Foyer\'s Music app searches and plays Apple Music on the HomePods. To link your account, open Music Assistant, then Settings → Music sources → Apple Music, and sign in with your Apple Account (again every 6 months). The HomePods must accept AirPlay from "Everyone on the same network" (Home app → Home Settings → Speakers & TV).')
       : T('Pour lancer vos playlists Apple Music sur les HomePod depuis Foyer, ajoutez Music Assistant dans Home Assistant (fournisseurs Apple Music et AirPlay). En attendant, l\'app Musique d\'Apple s\'ouvre depuis Foyer et envoie la musique aux HomePod par AirPlay.',
         'To start Apple Music playlists on the HomePods from Foyer, add Music Assistant to Home Assistant (Apple Music and AirPlay providers). Meanwhile Apple\'s Music app opens from Foyer and plays to the HomePods over AirPlay.'));
     row(c3, { icon: 'music', color: '#ff2d55', label: 'Apple Music', value: caps.musicAssistant ? 'Music Assistant' : T('App Musique d\'Apple', 'Apple Music app') });
     row(c3, { icon: 'radio', color: '#ff9500', label: T('Radios', 'Radio'), value: caps.radio ? T('Par Home Assistant', 'Through Home Assistant') : '—' });
-    row(c3, { icon: 'speaker-multiple', color: '#5856d6', label: 'Music Assistant', value: caps.musicAssistant ? T('Connecté', 'Connected') : T('Non installé', 'Not installed') });
+    row(c3, { icon: 'speaker-multiple', color: '#5856d6', label: 'Music Assistant', value: caps.musicAssistant ? T('Installé', 'Installed') : T('Non installé', 'Not installed') });
+    if (caps.musicAssistant) {
+      // Its own page (port 8095): the Apple sign-in only comes back there.
+      row(c3, {
+        icon: 'link-variant', color: '#007aff', label: T('Ouvrir Music Assistant', 'Open Music Assistant'), blue: true,
+        onTap: function () { w.open('http://' + w.location.hostname + ':8095/', '_blank'); }
+      });
+    }
   };
 
   PAGES.calendar = function (body) {

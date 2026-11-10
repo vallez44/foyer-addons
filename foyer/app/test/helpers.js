@@ -93,7 +93,18 @@ function makeFakeWs(home, opts = {}) {
           this._emit({ id: m.id, type: 'event', event: { type: m.forecast_type, forecast: [{ datetime: iso(), condition: 'rainy', temperature: 12, templow: 7 }] } });
           break;
         case 'todo/item/list': this.result(m.id, { items: [{ summary: 'Pain', uid: '1', status: 'needs_action' }, { summary: 'Lait', uid: '2', status: 'completed' }] }); break;
-        case 'call_service': calls.push(m); this.result(m.id, { context: { id: 'c' } }); break;
+        case 'call_service':
+          calls.push(m);
+          if (m.service === 'search_media' && m.return_response) {
+            const result = [
+              { title: 'Clair de lune', media_class: 'track', media_content_id: 'apple_music://track/1', media_content_type: 'track', can_play: true, can_expand: false },
+              { title: 'Caméra', media_class: 'app', media_content_id: 'media-source://camera/camera.x', media_content_type: 'app', can_play: false, can_expand: true },
+            ];
+            this.result(m.id, { context: { id: 'c' }, response: { [m.target.entity_id]: { result } } });
+          } else {
+            this.result(m.id, { context: { id: 'c' } });
+          }
+          break;
         case 'ping': this._emit({ id: m.id, type: 'pong' }); break;
         case 'unsubscribe_events': this.result(m.id, null); break;
         default: this.result(m.id, `unknown command ${m.type}`, false);

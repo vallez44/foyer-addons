@@ -176,6 +176,14 @@ test('screens: their own preferences, music on the speakers, calendar and remind
   assert.strictEqual((await request(port, 'POST', '/api/action', { body: play, headers: H, cookie })).status, 200);
   await until(() => app.home.states.get('media_player.enceinte_salon').attributes.media_title === item.title, 2000);
   assert.strictEqual((await request(port, 'GET', '/api/browse?entity_id=light.chevet', { cookie })).status, 404, 'only speakers');
+  assert.ok(!root.json.children.some((c) => /^media-source:\/\/camera/.test(c.id)), 'no cameras among the music');
+
+  // Search (Apple Music through Music Assistant at home; the demo searches its own music).
+  const found = await request(port, 'GET', '/api/search?entity_id=media_player.enceinte_salon&q=jazz', { cookie });
+  assert.strictEqual(found.status, 200);
+  assert.ok(found.json.children.some((c) => c.title === 'Jazz du soir' && c.play));
+  assert.strictEqual((await request(port, 'GET', '/api/search?entity_id=media_player.enceinte_salon&q=%20', { cookie })).status, 400);
+  assert.strictEqual((await request(port, 'GET', '/api/search?entity_id=light.chevet&q=jazz', { cookie })).status, 404, 'only speakers search');
   const odd = { ...play, data: { media_content_id: { url: 'x' }, media_content_type: 'music' } };
   assert.strictEqual((await request(port, 'POST', '/api/action', { body: odd, headers: H, cookie })).status, 400, 'fields are checked');
 

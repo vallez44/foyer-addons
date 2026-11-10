@@ -58,6 +58,8 @@ class Home extends EventEmitter {
     this.states = new Map();
     this.entityReg = new Map();
     this.deviceReg = new Map();
+    this.twinOf = new Map();
+    this.nativeOf = new Map();
     this.areas = [];
     this.config = {};
     this.blocks = { weather: null, calendar: null, todo: null };
@@ -175,13 +177,70 @@ class Home extends EventEmitter {
         icon: e.icon || null,
         // The "Masquer dans Foyer" / "Hide in Foyer" label keeps an entity off the iPads.
         skip: Array.isArray(e.labels) && e.labels.some((l) => HIDE_LABELS.has(l)),
+        platform: e.platform || null,
+        uid: typeof e.unique_id === 'string' ? e.unique_id : null,
       });
     }
+    this._linkTwins();
     if (notify) {
       this.log.info('Home Assistant registries changed, reloading the iPads.');
       this.resync();
       this.emit('loaded');
     }
+  }
+
+  /**
+   * Music Assistant adds a second player for each AirPlay speaker Home Assistant already knows (a HomePod…).
+   * The iPads see one speaker: the original one, which has the room and sees what Siri or the iPhone plays.
+   * What only Music Assistant can do (Apple Music, search) goes to its twin, found by the speaker's MAC address.
+   */
+  _linkTwins() {
+    this.twinOf = new Map();
+    this.nativeOf = new Map();
+    const byMac = new Map();
+    for (const [id, r] of this.entityReg) {
+      if (!id.startsWith('media_player.') || r.platform === 'music_assistant' || !r.uid || r.disabled) continue;
+      const hex = r.uid.toLowerCase().replace(/[^0-9a-f]/g, '');
+      if (hex.length === 12) byMac.set(hex, id);
+    }
+    for (const [id, r] of this.entityReg) {
+      if (!id.startsWith('media_player.') || r.platform !== 'music_assistant' || !r.uid || r.disabled) continue;
+      const m = /^ap([0-9a-f]{12})$/i.exec(r.uid);
+      const native = m && byMac.get(m[1].toLowerCase());
+      if (!native || this.twinOf.has(native)) continue;
+      this.twinOf.set(native, id);
+      this.nativeOf.set(id, native);
+    }
+  }
+
+  /** True for a player of Music Assistant (its library can be browsed and searched). */
+  isMusicAssistant(id) {
+    const r = this.entityReg.get(id);
+    return Boolean(r && r.platform === 'music_assistant');
+  }
+
+  /** The player that plays Apple Music and the library for this speaker (its Music Assistant twin when it works). */
+  libraryFor(id) {
+    const ma = this.twinOf && this.twinOf.get(id);
+    const st = ma && this.states.get(ma);
+    return st && st.state !== 'unavailable' ? ma : id;
+  }
+
+  /** The player to show and to control for this speaker: the one that plays (or holds a paused song). */
+  speakerFor(id) {
+    const ma = this.libraryFor(id);
+    if (ma === id) return id;
+    const a = (this.states.get(ma) || {}).state;
+    const n = (this.states.get(id) || {}).state;
+    if (a === 'playing' || a === 'buffering') return ma;
+    if (n === 'playing') return id;
+    if (a === 'paused' && n !== 'playing') return ma;
+    return id;
+  }
+
+  /** Where a speaker's action goes: its library for play_media, the player that plays for the rest. */
+  mediaTarget(id, service) {
+    return service === 'play_media' ? this.libraryFor(id) : this.speakerFor(id);
   }
 
   _onStateChanged(data) {
@@ -191,6 +250,9 @@ class Home extends EventEmitter {
     const wasEligible = prev ? this.isEligible(id) : false;
     if (data.new_state) this.states.set(id, data.new_state);
     else this.states.delete(id);
+    // A Music Assistant twin changes what its speaker shows.
+    const native = this.nativeOf && this.nativeOf.get(id);
+    if (native && this.isEligible(native)) this.markEntity(native);
     if (!wasEligible && !this.isEligible(id)) return;
     this.markEntity(id);
     const domain = id.split('.')[0];
@@ -206,6 +268,13 @@ class Home extends EventEmitter {
   }
 
   isEligible(id) {
+    // A Music Assistant twin hides behind its speaker (unless that speaker is hidden).
+    const native = this.nativeOf && this.nativeOf.get(id);
+    if (native && this._eligible(native)) return false;
+    return this._eligible(id);
+  }
+
+  _eligible(id) {
     const domain = id.split('.')[0];
     if (!DOMAINS.has(domain)) return false;
     const reg = this.entityReg.get(id);
@@ -253,25 +322,37 @@ class Home extends EventEmitter {
 
   /** The small, safe form of a state an iPad receives (no tokens, no GPS, no internals). */
   compact(id) {
-    const st = this.states.get(id);
-    if (!st) return null;
+    const own = this.states.get(id);
+    if (!own) return null;
     const domain = id.split('.')[0];
+    // A speaker with a Music Assistant twin shows whichever of the two plays.
+    const shown = domain === 'media_player' ? this.speakerFor(id) : id;
+    const st = this.states.get(shown) || own;
+    const ownAttrs = own.attributes || {};
     const src = st.attributes || {};
     const at = {};
     for (const k of COMMON_ATTRS.concat(ATTRS[domain] || [])) {
       if (src[k] !== undefined && src[k] !== null) at[k] = src[k];
     }
-    if (domain === 'media_player' && src.entity_picture) at.pic = `api/art/${id}?c=${shortHash(src.entity_picture)}`;
+    if (domain === 'media_player') {
+      if (src.entity_picture) at.pic = `api/art/${id}?c=${shortHash(src.entity_picture)}`;
+      const lib = this.libraryFor(id);
+      if (lib !== id || this.isMusicAssistant(id)) {
+        at.ma = true;
+        const libAttrs = (this.states.get(lib) || {}).attributes || {};
+        at.supported_features = (ownAttrs.supported_features || 0) | (libAttrs.supported_features || 0);
+      }
+    }
     if (domain === 'camera') at.pic = `api/camera/${id}`;
     const reg = this.entityReg.get(id);
     const dev = reg && reg.device ? this.deviceReg.get(reg.device) : null;
     if (domain === 'media_player' && dev && dev.model) at.model = dev.model;
     return {
       s: st.state,
-      n: this.displayName(id, st),
-      fn: src.friendly_name || null,
+      n: this.displayName(id, own),
+      fn: ownAttrs.friendly_name || null,
       a: this.areaOf(id),
-      i: (reg && reg.icon) || src.icon || null,
+      i: (reg && reg.icon) || ownAttrs.icon || null,
       at,
       lc: Date.parse(st.last_changed) || 0,
     };
@@ -293,7 +374,8 @@ class Home extends EventEmitter {
       // Where Home Assistant's own page lives (Settings → Home Assistant → Open).
       url: typeof c.internal_url === 'string' && /^https?:\/\//.test(c.internal_url) ? c.internal_url : null,
       caps: {
-        musicAssistant: Array.isArray(c.components) && c.components.includes('music_assistant'),
+        musicAssistant: (Array.isArray(c.components) && c.components.includes('music_assistant'))
+          || [...this.entityReg.values()].some((r) => r.platform === 'music_assistant'),
         radio: Array.isArray(c.components) && c.components.includes('radio_browser'),
       },
       connected: this.ready,

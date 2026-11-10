@@ -80,6 +80,13 @@ class HASource extends EventEmitter {
     return this.conn.command(msg, 30000);
   }
 
+  /** Searches a player's music (Music Assistant: Apple Music, the library, radios…). */
+  async searchMedia(entityId, query) {
+    const r = await this.conn.callService('media_player', 'search_media', { search_query: query }, { entity_id: entityId }, true);
+    const resp = r && r.response && r.response[entityId];
+    return (resp && Array.isArray(resp.result)) ? resp.result : [];
+  }
+
   async cameraImage(entityId) {
     return readPicture(await this.conn.rest(`/camera_proxy/${encodeURIComponent(entityId)}`));
   }

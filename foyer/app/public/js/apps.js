@@ -141,17 +141,61 @@
       label: function (v) { return F.t('volume') + ' ' + Math.round(v) + ' %'; },
       onChange: function (v) { F.call(st.speaker, 'volume_set', { volume_level: v / 100 }); }
     });
+    // Search (Music Assistant: Apple Music, the library, radios).
+    var search = F.el('div', 'mu-search', sheet.body);
+    var sInput = doc.createElement('input');
+    sInput.type = 'search';
+    sInput.className = 'rm-input mu-search-in';
+    sInput.placeholder = T('Artistes, morceaux, albums, playlists…', 'Artists, songs, albums, playlists…');
+    sInput.setAttribute('autocomplete', 'off');
+    sInput.setAttribute('autocorrect', 'off');
+    sInput.setAttribute('autocapitalize', 'off');
+    sInput.setAttribute('spellcheck', 'false');
+    sInput.setAttribute('enterkeyhint', 'search');
+    search.appendChild(sInput);
+    F.icon('magnify', 'mu-search-ic', search);
     var browse = F.el('div', 'mu-browse', sheet.body);
+    var sTimer = null;
+    var seq = 0;
+    sInput.addEventListener('input', function () {
+      w.clearTimeout(sTimer);
+      sTimer = w.setTimeout(runSearch, 500);
+    }, false);
+    sInput.addEventListener('keydown', function (ev) {
+      if (ev.keyCode !== 13) return;
+      w.clearTimeout(sTimer);
+      runSearch();
+      sInput.blur();
+    }, false);
+
+    var MA_TITLES = {
+      artists: ['Artistes', 'Artists'], albums: ['Albums', 'Albums'], tracks: ['Morceaux', 'Songs'], playlists: ['Playlists', 'Playlists'],
+      radio: ['Radios', 'Radios'], podcasts: ['Podcasts', 'Podcasts'], audiobooks: ['Livres audio', 'Audiobooks']
+    };
+    function titleOf(it) {
+      var t = it.type === 'music_assistant' && MA_TITLES[it.id];
+      return t ? T(t[0], t[1]) : it.title;
+    }
+    function canSearch() {
+      var e = F.e(st.speaker);
+      var at = (e && e.at) || {};
+      return Boolean(at.ma || ((at.supported_features || 0) & 4194304));
+    }
+    function playItem(it) {
+      F.call(st.speaker, 'play_media', { media_content_id: it.id, media_content_type: it.type }, function (c) { c.s = 'playing'; c.at.media_title = it.title; });
+      F.toast(T('Lecture sur ', 'Playing on ') + F.e(st.speaker).n);
+    }
 
     function renderSpeakers() {
       F.clear(spk);
       for (var i = 0; i < players.length; i++) {
         (function (id) {
           var e = F.e(id);
-          if (!e) return;
+          if (!e || (e.s === 'unavailable' && id !== st.speaker)) return;
           var b = F.button(spk, e.n, e.s === 'playing' ? 'play' : F.entityIcon(id, e), 'chip' + (id === st.speaker ? ' sel' : ''), function () {
             st.speaker = id;
             st.path = [];
+            sInput.value = '';
             F.lastSpeaker = id;
             renderSpeakers();
             renderNow();
@@ -172,22 +216,55 @@
       F.setIcon(play.iconEl, e.s === 'playing' ? 'pause' : 'play');
       if (at.volume_level !== undefined) vol.set(Math.round(at.volume_level * 100));
     }
+    /** One list of things to play: a row opens (album, artist, folder); the red button plays. */
+    function renderList(kids) {
+      var list = F.el('div', 'mu-list', browse);
+      for (var i = 0; i < kids.length; i++) {
+        (function (it) {
+          var r = F.el('div', 'mu-item', list);
+          var th = F.el('div', 'mu-thumb', r);
+          if (it.thumb) F.setBg(th, it.thumb);
+          else F.icon(it.open && !it.play ? 'folder-music' : 'music-note', '', th);
+          F.el('div', 'mu-item-t', r, titleOf(it));
+          if (it.play) {
+            var pb = F.icon('play-circle', 'mu-item-play', r);
+            if (it.open) F.onTap(pb, function () { playItem(it); });
+          }
+          if (it.open) F.icon('chevron-right', 'mu-item-open', r);
+          F.onTap(r, function () {
+            if (it.open) {
+              st.path.push(it);
+              load(it);
+            } else if (it.play) {
+              playItem(it);
+            }
+          });
+        }(kids[i]));
+      }
+    }
+    function header(label) {
+      var head = F.el('div', 'mu-head', browse);
+      if (st.path.length) {
+        var back = F.button(head, T('Retour', 'Back'), 'chevron-left', 'chip', function () {
+          st.path.pop();
+          load(st.path.length ? st.path[st.path.length - 1] : null);
+        });
+        back.style.marginLeft = '0';
+      }
+      F.el('span', 'mu-head-t', head, label);
+    }
     function load(item) {
+      var my = ++seq;
+      F.cls(search, 'hidden', !canSearch());
       F.clear(browse);
       var wait = F.el('div', 'mu-wait', browse, '…');
       var url = 'api/browse?entity_id=' + encodeURIComponent(st.speaker);
       if (item) url += '&id=' + encodeURIComponent(item.id || '') + '&type=' + encodeURIComponent(item.type || '');
       F.xhr('GET', url, null, function (status, data) {
+        if (my !== seq) return;
         if (wait.parentNode) wait.parentNode.removeChild(wait);
-        var head = F.el('div', 'mu-head', browse);
-        if (st.path.length) {
-          var back = F.button(head, T('Retour', 'Back'), 'chevron-left', 'chip', function () {
-            st.path.pop();
-            load(st.path.length ? st.path[st.path.length - 1] : null);
-          });
-          back.style.marginLeft = '0';
-        }
-        F.el('span', 'mu-head-t', head, data && data.title ? data.title : T('Parcourir', 'Browse'));
+        var root = data && data.type === 'music_assistant' && !data.id;
+        header(root ? T('Bibliothèque', 'Library') : (data && data.title ? titleOf(data) : T('Parcourir', 'Browse')));
         var kids = (status === 200 && data && data.children) || [];
         if (!kids.length) {
           var st2 = F.block('status') || {};
@@ -200,27 +277,35 @@
           }
           return;
         }
-        var list = F.el('div', 'mu-list', browse);
-        for (var i = 0; i < kids.length; i++) {
-          (function (it) {
-            var r = F.el('div', 'mu-item', list);
-            var th = F.el('div', 'mu-thumb', r);
-            if (it.thumb) F.setBg(th, it.thumb);
-            else F.icon(it.open ? 'folder-music' : 'music-note', '', th);
-            F.el('div', 'mu-item-t', r, it.title);
-            if (it.play) F.icon('play-circle', 'mu-item-play', r);
-            else if (it.open) F.icon('chevron-right', 'mu-item-open', r);
-            F.onTap(r, function () {
-              if (it.open && !it.play) {
-                st.path.push(it);
-                load(it);
-              } else if (it.play) {
-                F.call(st.speaker, 'play_media', { media_content_id: it.id, media_content_type: it.type }, function (c) { c.s = 'playing'; c.at.media_title = it.title; });
-                F.toast(T('Lecture sur ', 'Playing on ') + F.e(st.speaker).n);
-              }
-            });
-          }(kids[i]));
+        renderList(kids);
+      }, 30000);
+    }
+    function runSearch() {
+      var q = sInput.value.replace(/^\s+|\s+$/g, '');
+      if (!q) {
+        load(st.path.length ? st.path[st.path.length - 1] : null);
+        return;
+      }
+      var my = ++seq;
+      F.clear(browse);
+      var wait = F.el('div', 'mu-wait', browse, '…');
+      F.xhr('GET', 'api/search?entity_id=' + encodeURIComponent(st.speaker) + '&q=' + encodeURIComponent(q.slice(0, 100)), null, function (status, data) {
+        if (my !== seq) return;
+        if (wait.parentNode) wait.parentNode.removeChild(wait);
+        var kids = (status === 200 && data && data.children) || [];
+        st.path = [];
+        header(T('Résultats', 'Results'));
+        if (!kids.length) {
+          F.el('div', 'mu-empty', browse, status === 200
+            ? T('Aucun résultat pour « ' + q + ' ».', 'No results for "' + q + '".')
+            : T('La recherche n\'a pas abouti.', 'The search did not work.'));
+          if (status === 200) {
+            F.el('div', 'mu-empty sub', browse, T('Pour chercher dans Apple Music, connectez votre compte dans Music Assistant (voir Réglages → Musique).',
+              'To search Apple Music, sign in to your account in Music Assistant (see Settings → Music).'));
+          }
+          return;
         }
+        renderList(kids);
       }, 30000);
     }
     renderSpeakers();

@@ -50,10 +50,10 @@ function buildStates() {
     S('scene.cinema', 'unknown', { friendly_name: 'Cinéma', icon: 'mdi:movie-open' }, null),
     S('media_player.enceinte_salon', 'playing', {
       friendly_name: 'Enceinte Salon', media_title: "Lumière d'octobre", media_artist: 'Les Pins Bleus', media_album_name: 'Marée basse',
-      volume_level: 0.32, is_volume_muted: false, supported_features: 152463, media_duration: 214, media_position: 63,
+      volume_level: 0.32, is_volume_muted: false, supported_features: 4346767, media_duration: 214, media_position: 63,
       media_position_updated_at: iso(Date.now()), entity_picture: '/api/media_player_proxy/media_player.enceinte_salon?token=demo',
     }, 'salon'),
-    S('media_player.enceinte_chambre', 'idle', { friendly_name: 'Enceinte Chambre', volume_level: 0.2, supported_features: 152463 }, 'chambre'),
+    S('media_player.enceinte_chambre', 'idle', { friendly_name: 'Enceinte Chambre', volume_level: 0.2, supported_features: 4346767 }, 'chambre'),
     S('camera.sonnette', 'idle', { friendly_name: 'Sonnette', entity_picture: '/api/camera_proxy/camera.sonnette?token=demo' }, 'entree'),
     S('camera.jardin', 'idle', { friendly_name: 'Jardin' }, 'jardin'),
     S('camera.allee', 'idle', { friendly_name: 'Allée' }, 'garage'),
@@ -88,12 +88,12 @@ const TRACKS = [["Lumière d'octobre", 'Les Pins Bleus'], ['Sel et cendre', 'Odi
 
 /**
  * A fixture replays a copy of a real home (for previews):
- * { config, areas: [[id, name]], states: [[entity_id, state, area, attributes, "hidden"|"config"|"diagnostic"]] }
+ * { config, areas: [[id, name]], states: [[entity_id, state, area, attributes, "hidden"|"config"|"diagnostic", { platform, unique_id }]] }
  */
 function fixtureStates(fixture) {
   const now = iso(Date.now() - 3600000);
-  return fixture.states.map(([entity_id, state, area, attributes, flag]) => ({
-    entity_id, state, attributes, area, flag: flag || null, last_changed: now, last_updated: now,
+  return fixture.states.map(([entity_id, state, area, attributes, flag, reg]) => ({
+    entity_id, state, attributes, area, flag: flag || null, reg: reg || null, last_changed: now, last_updated: now,
   }));
 }
 
@@ -108,6 +108,7 @@ class DemoSource extends EventEmitter {
     this.states = new Map();
     this.areaOf = new Map();
     this.flags = new Map();
+    this.regExtra = new Map();
     this.stateCb = null;
     this.forecastCbs = [];
     this.track = 0;
@@ -120,10 +121,11 @@ class DemoSource extends EventEmitter {
 
   start() {
     for (const st of this.fixture ? fixtureStates(this.fixture) : buildStates()) {
-      const { area, flag, ...rest } = st;
+      const { area, flag, reg, ...rest } = st;
       this.states.set(st.entity_id, rest);
       this.areaOf.set(st.entity_id, area);
       if (flag) this.flags.set(st.entity_id, flag);
+      if (reg) this.regExtra.set(st.entity_id, reg);
     }
     setTimeout(() => {
       this.connected = true;
@@ -164,6 +166,7 @@ class DemoSource extends EventEmitter {
         entity_category: flag === 'config' || flag === 'diagnostic' ? flag : null,
         hidden_by: flag === 'hidden' ? 'user' : null,
         disabled_by: null,
+        ...(this.regExtra.get(entity_id) || {}),
       };
     }));
   }
@@ -241,7 +244,21 @@ class DemoSource extends EventEmitter {
     const item = (title, mid, type) => ({ title, media_class: 'music', media_content_id: mid, media_content_type: type, can_play: true, can_expand: false });
     if (id === 'radios') return Promise.resolve(dir('Radios', 'radios', DEMO_RADIOS.map((t, i) => item(t, `radio:${i}`, 'audio/mpeg'))));
     if (id === 'playlists') return Promise.resolve(dir('Playlists', 'playlists', DEMO_PLAYLISTS.map((t, i) => item(t, `playlist:${i}`, 'playlist'))));
-    return Promise.resolve(dir('Musique', 'root', [dir('Radios', 'radios'), dir('Playlists', 'playlists')]));
+    // Like Home Assistant, the root also lists media sources that have nothing to play on a speaker.
+    const cams = { title: 'Camera', media_class: 'app', media_content_id: 'media-source://camera', media_content_type: 'app', can_expand: true, can_play: false };
+    return Promise.resolve(dir('Musique', 'root', [dir('Radios', 'radios'), dir('Playlists', 'playlists'), cams]));
+  }
+
+  searchMedia(entityId, query) {
+    const q = String(query).toLowerCase();
+    const item = (title, mid, type, cls) => ({ title, media_class: cls, media_content_id: mid, media_content_type: type, can_play: true, can_expand: false });
+    const out = [];
+    TRACKS.forEach(([title, artist], i) => {
+      if (`${title} ${artist}`.toLowerCase().includes(q)) out.push(item(`${title} · ${artist}`, `track:${i}`, 'track', 'track'));
+    });
+    DEMO_PLAYLISTS.forEach((t, i) => { if (t.toLowerCase().includes(q)) out.push(item(t, `playlist:${i}`, 'playlist', 'playlist')); });
+    DEMO_RADIOS.forEach((t, i) => { if (t.toLowerCase().includes(q)) out.push(item(t, `radio:${i}`, 'audio/mpeg', 'music')); });
+    return Promise.resolve(out);
   }
 
   _set(id, state, attrs) {
@@ -310,7 +327,12 @@ class DemoSource extends EventEmitter {
         }
         if (service === 'volume_set') return this._set(id, st.state, { volume_level: data.volume_level });
         if (service === 'play_media') {
-          const m = /^(radio|playlist):(\d+)$/.exec(data.media_content_id || '');
+          const m = /^(radio|playlist|track):(\d+)$/.exec(data.media_content_id || '');
+          if (m && m[1] === 'track' && TRACKS[Number(m[2])]) {
+            this.track = Number(m[2]);
+            const [title, artist] = TRACKS[this.track];
+            return this._set(id, 'playing', { media_title: title, media_artist: artist, media_position: 0 });
+          }
           const title = m ? (m[1] === 'radio' ? DEMO_RADIOS : DEMO_PLAYLISTS)[Number(m[2])] : data.media_content_id;
           return this._set(id, 'playing', { media_title: title, media_artist: m && m[1] === 'radio' ? 'Radio' : 'Playlist', media_position: 0 });
         }
