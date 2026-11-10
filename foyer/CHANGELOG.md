@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+- **Votre propre fond d'écran** : Réglages → Affichage (ou Personnaliser) → **+** choisit une de vos photos. Elle
+  est réduite, gardée dans `/media/foyer` et montrée sur tous les écrans ; le verre prend une légère teinte
+  fumée sur une photo pour garder le texte lisible.
+- Le réglage *Sirène sur les iPad* (Réglages → Alarme) est bien transmis aux écrans.
+
 ## 0.4.1
 
 - Le menu d'une alarme ne propose que les modes qu'elle accepte (avec Alarmo : ceux activés dans ses réglages),
