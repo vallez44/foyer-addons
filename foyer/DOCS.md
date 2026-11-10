@@ -174,14 +174,17 @@ Maison. On les fait passer par une automatisation de l'app Maison, exécutée pa
    Maison elle-même : elle va dans le **raccourci** de l'automatisation, qui n'apparaît qu'après **Convertir en
    raccourci**. L'interrupteur *Foyer relevé HomePod* n'est visible dans l'app Maison qu'une fois le pont
    HomeKit rechargé (Paramètres → Appareils et services → HomeKit Bridge → ⋮ → Recharger).
-   **Automatisation → + → Un accessoire est contrôlé → Foyer relevé HomePod → S'allume → Suivant**, puis tout
-   en bas **Convertir en raccourci** :
-   - ajoutez l'action **Obtenir l'état de** (Maison) pour chaque mesure : capteur de température du HomePod de
-     la chambre → *Température actuelle*, capteur d'humidité → *Humidité relative actuelle*, et ainsi de suite ;
-   - ajoutez **Obtenir le contenu de l'URL** : l'adresse du webhook
+   **Automatisation → + → Un accessoire est sous contrôle → Foyer relevé HomePod → S'allume → Suivant**, puis
+   tout en bas **Convertir en raccourci** :
+   - ajoutez l'action **Obtenir le statut** (icône Maison ; elle s'appelait « Obtenir l'état de » avant iOS 26)
+     pour chaque mesure : capteur de température du HomePod de la chambre → *Température actuelle*, capteur
+     d'humidité → *Humidité relative actuelle*, et ainsi de suite (6 actions ; **Dupliquer** puis changer le
+     capteur va plus vite) ;
+   - ajoutez **Obtenir le contenu de l'URL** (cherchez « URL ») : l'adresse du webhook
      (`http://<adresse-de-home-assistant>:8123/api/webhook/<identifiant>`), **Méthode POST**, **Corps de la
-     requête JSON**, un champ **Nombre** par mesure : `chambre_t`, `chambre_h`, `sdb_t`, `sdb_h`, `salon_t`,
-     `salon_h` ;
+     requête JSON**, un champ **Texte** par mesure : `chambre_t`, `chambre_h`, `sdb_t`, `sdb_h`, `salon_t`,
+     `salon_h`, dont la valeur est le résultat de l'action « Obtenir le statut » correspondante
+     (**Sélectionner une variable**, puis touchez cette action) ;
    - **OK**. Les mesures arrivent au plus tard 15 minutes après, et s'affichent dans les pièces de Foyer.
 
 Le webhook n'accepte que le réseau local. Un champ absent ou illisible est ignoré.
