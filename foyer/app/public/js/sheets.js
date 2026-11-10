@@ -405,9 +405,12 @@
       code = null;
     }
     var row = F.el('div', 'btn-row btn-row-wrap', sheet.body);
-    F.button(row, F.t('arm_home'), 'shield-home', '', function () { send('alarm_arm_home'); });
-    F.button(row, F.t('arm_away'), 'shield-lock', '', function () { send('alarm_arm_away'); });
-    F.button(row, F.t('arm_night'), 'shield-moon', '', function () { send('alarm_arm_night'); });
+    // Only the modes this alarm accepts (Alarmo: the ones enabled in its settings).
+    var sf = e.at && e.at.supported_features;
+    var has = function (bit) { return sf === undefined || sf === null || Boolean(sf & bit); };
+    if (has(2)) F.button(row, F.t('arm_away'), 'shield-lock', '', function () { send('alarm_arm_away'); });
+    if (has(1)) F.button(row, F.t('arm_home'), 'shield-home', '', function () { send('alarm_arm_home'); });
+    if (has(4)) F.button(row, F.t('arm_night'), 'shield-moon', '', function () { send('alarm_arm_night'); });
     F.button(row, F.t('disarm'), 'shield-off-outline', 'btn-strong', function () { send('alarm_disarm'); });
     if (needsCode) F.keypad(sheet.body, function (c) { code = c; F.toast(F.t('code') + ' ✓'); });
   };

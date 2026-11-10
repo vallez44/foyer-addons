@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1
+
+- Le menu d'une alarme ne propose que les modes qu'elle accepte (avec Alarmo : ceux activés dans ses réglages),
+  « Absence » en premier.
+
 ## 0.4.0
 
 - **Verre clair, comme le Liquid Glass d'iOS** : les tuiles éteintes laissent voir le fond d'écran (peu de flou,
